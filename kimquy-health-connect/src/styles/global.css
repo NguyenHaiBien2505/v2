@@ -1,0 +1,125 @@
+/* ═══════════════════════════════════════
+   Global Styles – Phòng Khám Kim Quy
+   ═══════════════════════════════════════ */
+@import './variables.css';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-main);
+  color: var(--color-text);
+  background: var(--color-bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-decoration: none;
+  color: var(--color-primary);
+  transition: color var(--transition);
+}
+a:hover {
+  color: var(--color-primary-dark);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* Utility */
+.section-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: 0.5rem;
+}
+.section-subtitle {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  margin-bottom: 2rem;
+}
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Toast notification */
+.toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.toast {
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-weight: 500;
+  animation: slideIn 0.3s ease;
+}
+.toast--success { background: var(--color-secondary); }
+.toast--error { background: var(--color-danger); }
+.toast--info { background: var(--color-primary); }
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--color-text-muted);
+}
+.empty-state svg {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  color: var(--color-border);
+}
+
+/* Star rating */
+.stars {
+  color: #FFC107;
+  display: inline-flex;
+  gap: 2px;
+}
+
+/* Badge/Status */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.status-badge--pending { background: #FFF3E0; color: #E65100; }
+.status-badge--confirmed { background: #E3F2FD; color: #1565C0; }
+.status-badge--completed { background: #E8F5E9; color: #2E7D32; }
+.status-badge--cancelled { background: #FFEBEE; color: #C62828; }

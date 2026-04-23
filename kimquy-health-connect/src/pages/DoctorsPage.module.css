@@ -1,0 +1,77 @@
+.page { margin-top: var(--header-height); }
+.banner {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #fff;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+.banner h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+.banner p { opacity: 0.9; font-size: 1.05rem; }
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+.filters {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+.filterSelect {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  min-width: 180px;
+}
+.searchInput {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-size: 0.9rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--color-border-light);
+  transition: all var(--transition);
+  text-decoration: none;
+  color: inherit;
+}
+.card:hover { box-shadow: var(--shadow-lg); transform: translateY(-4px); }
+.cardImg { width: 100%; height: 240px; object-fit: cover; }
+.cardBody { padding: 1.25rem; }
+.cardName { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.15rem; }
+.cardDegree { font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 0.25rem; }
+.cardSpec { color: var(--color-primary); font-weight: 500; font-size: 0.9rem; margin-bottom: 0.3rem; }
+.cardMeta { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--color-text-muted); }
+.rating { display: flex; align-items: center; gap: 0.3rem; color: #FFC107; font-weight: 600; }
+.fee { font-weight: 600; color: var(--color-secondary); }
+.cardBtn {
+  display: block;
+  width: 100%;
+  padding: 0.6rem;
+  margin-top: 0.75rem;
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.cardBtn:hover { background: var(--color-primary-dark); }
+
+@media (max-width: 1024px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }

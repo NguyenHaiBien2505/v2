@@ -1,0 +1,70 @@
+/* Doctor Appointments */
+.pageTitle { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem; }
+
+.filterBar { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.filterBtn {
+  padding: 0.4rem 1rem; border-radius: 20px; border: 1px solid var(--color-border);
+  background: var(--color-surface); font-family: var(--font-main); font-size: 0.85rem;
+  cursor: pointer; transition: all var(--transition);
+}
+.filterBtn:hover { border-color: var(--color-primary); }
+.filterBtnActive { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+
+.tableCard {
+  background: var(--color-surface); border-radius: var(--radius-md); padding: 1.5rem;
+  border: 1px solid var(--color-border-light);
+}
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600;
+  color: var(--color-text-muted); text-transform: uppercase; border-bottom: 2px solid var(--color-border-light);
+}
+.table td {
+  padding: 0.75rem; font-size: 0.9rem; border-bottom: 1px solid var(--color-border-light);
+  vertical-align: middle;
+}
+.table tr:hover td { background: var(--color-bg); }
+
+.btnAction {
+  padding: 0.3rem 0.65rem; border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 600;
+  border: none; cursor: pointer; font-family: var(--font-main); transition: opacity var(--transition);
+  margin-right: 0.25rem;
+}
+.btnAction:hover { opacity: 0.85; }
+.btnApprove { background: #E8F5E9; color: #2E7D32; }
+.btnReject { background: #FFEBEE; color: var(--color-danger); }
+.btnComplete { background: var(--color-primary-bg); color: var(--color-primary); }
+.btnView { background: #F3F4F6; color: var(--color-text-secondary); }
+
+/* Modal */
+.modalOverlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal {
+  background: var(--color-surface); border-radius: var(--radius-lg); padding: 2rem;
+  width: 90%; max-width: 600px; max-height: 80vh; overflow-y: auto;
+}
+.modalTitle { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+.modalField { margin-bottom: 1rem; }
+.modalField label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
+.modalField textarea, .modalField input {
+  width: 100%; padding: 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  font-family: var(--font-main); font-size: 0.9rem; resize: vertical;
+}
+.modalActions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+.btnPrimary {
+  padding: 0.5rem 1rem; background: var(--color-primary); color: #fff; border: none;
+  border-radius: var(--radius-sm); font-family: var(--font-main); font-size: 0.85rem;
+  cursor: pointer; font-weight: 600;
+}
+.btnSecondary {
+  padding: 0.5rem 1rem; background: var(--color-bg); color: var(--color-text); border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm); font-family: var(--font-main); font-size: 0.85rem;
+  cursor: pointer; font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .table { font-size: 0.8rem; }
+  .modal { width: 95%; padding: 1.25rem; }
+}

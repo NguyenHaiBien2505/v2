@@ -1,0 +1,52 @@
+.planCard {
+  background: var(--color-surface); border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 1.5rem;
+}
+.planHeader { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem; }
+.planTitle { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem; }
+.planMeta { color: var(--color-text-muted); font-size: 0.85rem; }
+.statusBadge {
+  padding: 0.3rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+}
+.statusActive { background: var(--color-primary-bg); color: var(--color-primary); }
+.statusCompleted { background: #E8F5E9; color: #2E7D32; }
+.statusPaused { background: #FFF3E0; color: #E65100; }
+
+.progressBar { background: var(--color-bg); height: 12px; border-radius: 6px; overflow: hidden; margin: 1rem 0 0.5rem; }
+.progressFill {
+  height: 100%; background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
+  border-radius: 6px; transition: width 0.5s ease;
+}
+.progressLabel { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--color-text-muted); }
+
+.description { font-size: 0.9rem; color: var(--color-text); line-height: 1.6; margin: 1rem 0; }
+
+.timeline { position: relative; padding-left: 2rem; margin-top: 1.5rem; }
+.timeline::before {
+  content: ''; position: absolute; left: 8px; top: 8px; bottom: 8px; width: 2px;
+  background: var(--color-border-light);
+}
+.tlItem { position: relative; padding-bottom: 1.5rem; }
+.tlDot {
+  position: absolute; left: -1.6rem; top: 4px; width: 18px; height: 18px;
+  border-radius: 50%; border: 3px solid var(--color-surface); box-shadow: 0 0 0 2px var(--color-border);
+  background: var(--color-bg);
+}
+.tlDotDone { background: #2E7D32; box-shadow: 0 0 0 2px #2E7D32; }
+.tlDotProgress { background: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary); animation: pulse 2s infinite; }
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--color-primary); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 109, 199, 0.2); }
+}
+
+.tlDate { font-size: 0.75rem; color: var(--color-text-muted); font-weight: 600; text-transform: uppercase; }
+.tlTitle { font-size: 0.95rem; font-weight: 700; margin: 0.25rem 0; }
+.tlDesc { font-size: 0.85rem; color: var(--color-text-muted); }
+.tlDoctor { font-size: 0.8rem; color: var(--color-primary); margin-top: 0.25rem; }
+
+.empty {
+  text-align: center; padding: 3rem; background: var(--color-surface);
+  border: 1px dashed var(--color-border); border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+}

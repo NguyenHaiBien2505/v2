@@ -1,0 +1,78 @@
+.recordCard {
+  background: var(--color-surface); border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1rem;
+  display: flex; gap: 1rem; align-items: flex-start;
+  transition: box-shadow var(--transition);
+}
+.recordCard:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+.recordCard img { width: 56px; height: 56px; border-radius: var(--radius-full); object-fit: cover; }
+.recordInfo { flex: 1; }
+.recordTitle { font-weight: 700; font-size: 1rem; margin-bottom: 0.25rem; }
+.recordMeta { color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; }
+.diagnosis { font-size: 0.9rem; color: var(--color-text); }
+.diagnosis strong { color: var(--color-primary); }
+.viewBtn {
+  padding: 0.5rem 1rem; background: var(--color-primary); color: #fff; border: none;
+  border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-main);
+  font-size: 0.85rem; font-weight: 600;
+}
+
+/* Detail */
+.detailGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+.section {
+  background: var(--color-surface); border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 1.25rem;
+}
+.sectionTitle {
+  font-size: 1rem; font-weight: 700; margin-bottom: 1rem;
+  padding-bottom: 0.6rem; border-bottom: 2px solid var(--color-primary-bg);
+}
+.vitalGrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+.vitalItem {
+  background: var(--color-bg); padding: 0.75rem; border-radius: var(--radius-sm);
+  text-align: center;
+}
+.vitalLabel { font-size: 0.75rem; color: var(--color-text-muted); text-transform: uppercase; }
+.vitalValue { font-size: 1.05rem; font-weight: 700; color: var(--color-primary); margin-top: 0.25rem; }
+
+.txt { font-size: 0.9rem; line-height: 1.6; color: var(--color-text); white-space: pre-line; }
+.note {
+  background: #FFF8E1; border-left: 3px solid #FFB300; padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm); font-size: 0.9rem;
+}
+
+.prescTable { width: 100%; border-collapse: collapse; }
+.prescTable th, .prescTable td {
+  padding: 0.6rem 0.5rem; font-size: 0.85rem; border-bottom: 1px solid var(--color-border-light);
+  text-align: left; vertical-align: top;
+}
+.prescTable th {
+  background: var(--color-bg); font-weight: 600; color: var(--color-text-muted);
+  text-transform: uppercase; font-size: 0.75rem;
+}
+.drugName { font-weight: 600; color: var(--color-text); }
+
+.attachList { display: flex; flex-direction: column; gap: 0.5rem; }
+.attachItem {
+  display: flex; align-items: center; gap: 0.6rem; padding: 0.6rem;
+  background: var(--color-bg); border-radius: var(--radius-sm); font-size: 0.85rem;
+  cursor: pointer; transition: background var(--transition);
+}
+.attachItem:hover { background: var(--color-primary-bg); }
+
+.printBtn {
+  padding: 0.6rem 1rem; background: var(--color-primary); color: #fff; border: none;
+  border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font-main);
+  font-size: 0.85rem; font-weight: 600; margin-bottom: 1rem;
+}
+
+.empty {
+  text-align: center; padding: 3rem; background: var(--color-surface);
+  border: 1px dashed var(--color-border); border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 768px) {
+  .detailGrid { grid-template-columns: 1fr; }
+  .vitalGrid { grid-template-columns: 1fr; }
+}

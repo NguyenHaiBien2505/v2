@@ -1,0 +1,35 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v2
+
+spring:
+  application:
+    name: be
+  datasource:
+    url: "jdbc:mysql://localhost:3306/kimquy_v2"
+    driverClassName: "com.mysql.cj.jdbc.Driver"
+    username: root
+    password: root
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    defer-datasource-initialization: true
+  #  sql:
+  #    init:
+  #      mode: always
+
+app:
+  cors:
+    # Comma-separated allowed origins for frontend development
+    allowed-origins: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000"
+
+jwt:
+  signerKey: "a9f3c2d8e14b6f7a90cd3b21e8f4a6d5c7b2e9a1f0d4c8b6e3a5f7d9c1b24"
+  valid-duration: 3600 # in second
+  refreshable-duration: 36000 # insecond
+

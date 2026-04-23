@@ -1,0 +1,57 @@
+.pageTitle { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem; }
+
+.statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+
+.statCard {
+  background: var(--color-surface); border-radius: var(--radius-md); padding: 1.25rem;
+  border: 1px solid var(--color-border-light); text-align: center;
+}
+.statNum { font-size: 1.8rem; font-weight: 800; color: var(--color-primary); }
+.statLabel { font-size: 0.8rem; color: var(--color-text-muted); margin-top: 0.25rem; }
+
+.chartsGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+
+.card {
+  background: var(--color-surface); border-radius: var(--radius-md); padding: 1.5rem;
+  border: 1px solid var(--color-border-light);
+}
+.cardTitle { font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+
+/* Bar chart */
+.barChart { display: flex; align-items: flex-end; gap: 0.5rem; height: 200px; padding-top: 1rem; }
+.barCol { display: flex; flex-direction: column; align-items: center; flex: 1; }
+.bar {
+  width: 100%; border-radius: 4px 4px 0 0; transition: height var(--transition-slow);
+  min-height: 4px;
+}
+.barLabel { font-size: 0.7rem; color: var(--color-text-muted); margin-top: 0.4rem; }
+.barValue { font-size: 0.75rem; font-weight: 700; margin-bottom: 0.2rem; }
+
+/* Rank list */
+.rankList { list-style: none; padding: 0; margin: 0; }
+.rankItem {
+  display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+.rankNum {
+  width: 28px; height: 28px; border-radius: var(--radius-full); background: var(--color-primary-bg);
+  color: var(--color-primary); font-weight: 700; font-size: 0.8rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.rankName { flex: 1; font-size: 0.9rem; font-weight: 600; }
+.rankCount { font-size: 0.85rem; color: var(--color-text-muted); }
+
+/* Completion donut placeholder */
+.donutWrap { display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.donut {
+  width: 120px; height: 120px; border-radius: 50%; position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.donutCenter {
+  position: absolute; font-size: 1.5rem; font-weight: 800; color: var(--color-text);
+}
+
+@media (max-width: 768px) {
+  .statsGrid { grid-template-columns: repeat(2, 1fr); }
+  .chartsGrid { grid-template-columns: 1fr; }
+}

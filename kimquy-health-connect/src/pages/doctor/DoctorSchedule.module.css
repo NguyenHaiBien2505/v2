@@ -1,0 +1,103 @@
+/* Doctor Schedule */
+.pageTitle { font-size: 1.4rem; font-weight: 700; margin-bottom: 1.5rem; }
+
+.scheduleGrid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;
+}
+
+.card {
+  background: var(--color-surface); border-radius: var(--radius-md); padding: 1.5rem;
+  border: 1px solid var(--color-border-light);
+}
+.cardTitle { font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem; }
+
+/* Weekly schedule table */
+.schedTable { width: 100%; border-collapse: collapse; }
+.schedTable th {
+  text-align: left; padding: 0.5rem 0.75rem; font-size: 0.8rem; font-weight: 600;
+  color: var(--color-text-muted); text-transform: uppercase; border-bottom: 2px solid var(--color-border-light);
+}
+.schedTable td {
+  padding: 0.6rem 0.75rem; font-size: 0.9rem; border-bottom: 1px solid var(--color-border-light); vertical-align: middle;
+}
+.schedTable tr:hover td { background: var(--color-bg); }
+
+.toggleActive {
+  width: 40px; height: 22px; border-radius: 12px; border: none; cursor: pointer;
+  position: relative; transition: background var(--transition);
+}
+.toggleActive.on { background: var(--color-secondary); }
+.toggleActive.off { background: var(--color-border); }
+.toggleActive::after {
+  content: ''; position: absolute; top: 3px; width: 16px; height: 16px;
+  border-radius: 50%; background: #fff; transition: left var(--transition);
+}
+.toggleActive.on::after { left: 20px; }
+.toggleActive.off::after { left: 3px; }
+
+.timeInput {
+  padding: 0.3rem 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  font-family: var(--font-main); font-size: 0.85rem; width: 90px;
+}
+
+/* Days off */
+.dayOffList { list-style: none; padding: 0; margin: 0; }
+.dayOffItem {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.5rem 0; border-bottom: 1px solid var(--color-border-light);
+}
+.dayOffDate { font-weight: 600; font-size: 0.9rem; }
+.dayOffReason { font-size: 0.8rem; color: var(--color-text-muted); }
+.btnRemove {
+  background: #FFEBEE; color: var(--color-danger); border: none; border-radius: var(--radius-sm);
+  padding: 0.25rem 0.5rem; font-size: 0.75rem; cursor: pointer; font-family: var(--font-main);
+}
+
+.addDayOff { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+.addDayOff input, .addDayOff select {
+  padding: 0.4rem 0.5rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  font-family: var(--font-main); font-size: 0.85rem;
+}
+
+.btnPrimary {
+  padding: 0.5rem 1rem; background: var(--color-primary); color: #fff; border: none;
+  border-radius: var(--radius-sm); font-family: var(--font-main); font-size: 0.85rem;
+  cursor: pointer; font-weight: 600; transition: background var(--transition);
+}
+.btnPrimary:hover { background: var(--color-primary-dark); }
+
+/* Calendar view */
+.calendarWrap { margin-top: 1rem; }
+.calHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+.calHeader h3 { font-size: 1rem; font-weight: 600; margin: 0; }
+.calNav { display: flex; gap: 0.5rem; }
+.calNav button {
+  width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--color-border);
+  background: var(--color-surface); cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.calGrid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+}
+.calDayHeader {
+  text-align: center; font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted);
+  padding: 0.4rem 0; text-transform: uppercase;
+}
+.calDay {
+  min-height: 60px; padding: 0.3rem; border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-sm); font-size: 0.8rem; position: relative; cursor: pointer;
+  transition: background var(--transition);
+}
+.calDay:hover { background: var(--color-primary-bg); }
+.calDayNum { font-weight: 600; font-size: 0.75rem; }
+.calDayOther { opacity: 0.3; }
+.calDayToday { background: var(--color-primary-bg); border-color: var(--color-primary); }
+.calDayOff { background: #FFF3E0; border-color: var(--color-warning); }
+.calDayAppt {
+  margin-top: 2px; padding: 1px 4px; background: var(--color-primary); color: #fff;
+  border-radius: 3px; font-size: 0.65rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+@media (max-width: 768px) {
+  .scheduleGrid { grid-template-columns: 1fr; }
+  .calDay { min-height: 40px; }
+}
