@@ -27,7 +27,7 @@ public class MedicalService {
 
     String category;
 
-    String price;
+    Long price;
 
     String image;
 

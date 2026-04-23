@@ -27,16 +27,16 @@ import java.util.Arrays;
 @EnableMethodSecurity
 public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINT =
-            {"/users", "/auth/token-login", "/auth/introspect", "/auth/logout","/auth/refresh"};
+            {"/users", "/auth/token-login", "/auth/introspect", "/auth/logout", "/auth/refresh"};
 
-        private static final String[] PUBLIC_GET_ENDPOINTS = {
+    private static final String[] PUBLIC_GET_ENDPOINTS = {
             "/users",
             "/doctors/**",
             "/specialties/**",
             "/medical-services/**",
             "/news/**",
             "/banners/**"
-        };
+    };
 
     private CustomJwtDecoder customJwtDecoder;
 
@@ -50,15 +50,16 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.   authorizeHttpRequests(requests ->
-            requests.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/patients/register").permitAll()
-                .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINT).permitAll()
-                .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
-                .requestMatchers(HttpMethod.PUT, "/users/**").permitAll()
-                //.requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
-                // .requestMatchers(HttpMethod.GET, "/users").hasAuthority("ROLE_ADMIN")
-                .anyRequest().authenticated());
+        httpSecurity.authorizeHttpRequests(requests ->
+                requests.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/patients/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINT).permitAll()
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/users/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/payment/webhook").permitAll()
+                        //.requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
+                        // .requestMatchers(HttpMethod.GET, "/users").hasAuthority("ROLE_ADMIN")
+                        .anyRequest().authenticated());
         httpSecurity.oauth2ResourceServer(oauth2ResourceServer ->
                 oauth2ResourceServer.jwt(jwtConfigurer -> jwtConfigurer
                                 .decoder(customJwtDecoder)
@@ -94,9 +95,9 @@ public class SecurityConfig {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
 
         Arrays.stream(allowedOrigins.split(","))
-            .map(String::trim)
-            .filter(origin -> !origin.isEmpty())
-            .forEach(corsConfiguration::addAllowedOrigin);
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .forEach(corsConfiguration::addAllowedOrigin);
         corsConfiguration.addAllowedMethod("*");
         corsConfiguration.addAllowedHeader("*");
         corsConfiguration.addExposedHeader("Authorization");

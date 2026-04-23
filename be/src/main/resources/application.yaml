@@ -33,3 +33,10 @@ jwt:
   valid-duration: 3600 # in second
   refreshable-duration: 36000 # insecond
 
+payos:
+  client-id: "e674d2ca-b642-490d-8b8f-25c0054df7b1"
+  api-key: "c0cf082c-877c-480c-8248-a11a4d454b1e"
+  checksum-key: "075f8c186b0483cbb2c035fb9351671c93807997b5ca589100730acfdc925513"
+  return-url: "http://localhost:3000/payment/success"
+  cancel-url: "http://localhost:3000/payment/cancel"
+
