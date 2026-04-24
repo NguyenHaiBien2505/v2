@@ -304,35 +304,45 @@ const mapService = (s: any): Service => ({
 
 const loadSpecialties = async (): Promise<Specialty[]> => {
   return safeApi(async () => {
-    const { data } = await axiosInstance.get<ApiResponse<any[]>>('/specialties/list');
-    return (data.result ?? []).map(mapSpecialty);
+    const { data } = await axiosInstance.get<ApiResponse<PageResponse<any>>>('/specialties?page=0&size=100', {
+      timeout: 3000,
+    });
+    return (data.result?.content ?? []).map(mapSpecialty);
   }, []);
 };
 
 const loadDoctors = async (): Promise<Doctor[]> => {
   return safeApi(async () => {
-    const { data } = await axiosInstance.get<ApiResponse<PageResponse<any>>>('/doctors?page=0&size=100');
+    const { data } = await axiosInstance.get<ApiResponse<PageResponse<any>>>('/doctors?page=0&size=100', {
+      timeout: 3000,
+    });
     return (data.result?.content ?? []).map(mapDoctor);
   }, []);
 };
 
 const loadBlogPosts = async (): Promise<BlogPost[]> => {
   return safeApi(async () => {
-    const { data } = await axiosInstance.get<ApiResponse<PageResponse<any>>>('/news?page=0&size=20');
+    const { data } = await axiosInstance.get<ApiResponse<PageResponse<any>>>('/news?page=0&size=20', {
+      timeout: 3000,
+    });
     return (data.result?.content ?? []).map(mapNews);
   }, []);
 };
 
 const loadBanners = async (): Promise<Banner[]> => {
   return safeApi(async () => {
-    const { data } = await axiosInstance.get<ApiResponse<any[]>>('/banners');
-    return (data.result ?? []).map(mapBanner).sort((a, b) => a.sortOrder - b.sortOrder);
+    const { data } = await axiosInstance.get<ApiResponse<PageResponse<any>>>('/banners?page=0&size=100', {
+      timeout: 3000,
+    });
+    return (data.result?.content ?? []).map(mapBanner).sort((a, b) => a.sortOrder - b.sortOrder);
   }, []);
 };
 
 const loadServices = async (): Promise<Service[]> => {
   return safeApi(async () => {
-    const { data } = await axiosInstance.get<ApiResponse<PageResponse<any>>>('/medical-services?page=0&size=100');
+    const { data } = await axiosInstance.get<ApiResponse<PageResponse<any>>>('/medical-services?page=0&size=100', {
+      timeout: 3000,
+    });
     return (data.result?.content ?? []).map(mapService);
   }, []);
 };
@@ -352,11 +362,13 @@ const loadReviewsFromDoctors = (items: Doctor[]): Review[] => {
   });
 };
 
-const loadedSpecialties = await loadSpecialties();
-const loadedDoctors = await loadDoctors();
-const loadedBlogPosts = await loadBlogPosts();
-const loadedBanners = await loadBanners();
-const loadedServices = await loadServices();
+const [loadedSpecialties, loadedDoctors, loadedBlogPosts, loadedBanners, loadedServices] = await Promise.all([
+  loadSpecialties(),
+  loadDoctors(),
+  loadBlogPosts(),
+  loadBanners(),
+  loadServices(),
+]);
 
 export const specialties: Specialty[] = loadedSpecialties;
 export const doctors: Doctor[] = loadedDoctors;

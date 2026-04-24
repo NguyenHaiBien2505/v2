@@ -1,0 +1,257 @@
+/* src/pages/MedicalServiceBookingPage.module.css */
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
+}
+
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin-bottom: 1.5rem;
+  transition: gap 0.2s;
+}
+
+.backBtn:hover {
+  gap: 0.75rem;
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.1rem;
+  color: #64748b;
+}
+
+.error {
+  color: #dc2626;
+}
+
+.serviceInfo {
+  background: white;
+  border-radius: 24px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.serviceInfo h1 {
+  font-size: 1.8rem;
+  color: #0f172a;
+  margin-bottom: 1rem;
+}
+
+.description {
+  color: #475569;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.price {
+  font-size: 1.2rem;
+  color: #0f172a;
+}
+
+.price strong {
+  color: #2563eb;
+  font-size: 1.4rem;
+}
+
+.bookingForm {
+  background: white;
+  border-radius: 24px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+.bookingForm h2 {
+  font-size: 1.4rem;
+  color: #0f172a;
+  margin-bottom: 1.5rem;
+}
+
+.formGroup {
+  margin-bottom: 2rem;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.required {
+  color: #dc2626;
+  font-size: 0.85rem;
+}
+
+.datesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.75rem;
+}
+
+.dateCard {
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dateCard:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.dateCardSelected {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: white;
+}
+
+.dateCardSelected .dateDay {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.dateCardSelected .dateNum {
+  color: white;
+}
+
+.dateDay {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.25rem;
+}
+
+.dateNum {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.timesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 0.75rem;
+}
+
+.timeSlot {
+  padding: 0.6rem;
+  text-align: center;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.timeSlot:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.timeSlotSelected {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: white;
+}
+
+.summary {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.summary h3 {
+  font-size: 1.1rem;
+  color: #0f172a;
+  margin-bottom: 1rem;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.summaryRow:last-child {
+  border-bottom: none;
+}
+
+.summaryRow span {
+  color: #64748b;
+}
+
+.totalPrice {
+  color: #2563eb;
+  font-size: 1.2rem;
+}
+
+.actions {
+  margin-top: 2rem;
+}
+
+.submitBtn {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .serviceInfo, .bookingForm {
+    padding: 1.5rem;
+  }
+  
+  .datesGrid, .timesGrid {
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  }
+}

@@ -51,6 +51,7 @@ import AdminBanners from './pages/admin/AdminBanners';
 import AdminAuditLogs from './pages/admin/AdminAuditLogs';
 
 import NotFound from './pages/NotFound';
+import MedicalServiceBookingPage from './pages/MedicalServiceBookingPage';
 
 const App = () => (
   <BrowserRouter>
@@ -61,6 +62,7 @@ const App = () => (
       <Route path="/doctors" element={<DoctorsPage />} />
       <Route path="/doctors/:id" element={<DoctorDetailPage />} />
       <Route path="/services" element={<ServicesPage />} />
+      <Route path="/services/:serviceId/book" element={<MedicalServiceBookingPage />} />
       <Route path="/blog" element={<BlogListPage />} />
       <Route path="/blog/:slug" element={<BlogDetailPage />} />
       <Route path="/login" element={<LoginPage />} />

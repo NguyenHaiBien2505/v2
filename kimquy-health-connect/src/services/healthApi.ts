@@ -1,5 +1,76 @@
+// src/services/healthApi.ts
 import axiosInstance from './axiosInstance';
 import type { Appointment, Banner, BlogPost, MedicalRecord, Notification, Review } from '../data/mockData';
+import axios from 'axios';
+
+// ================================================================
+// CONSTANTS & HELPERS
+// ================================================================
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v2';
+
+const getHeaders = () => {
+  const token = localStorage.getItem('accessToken');
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : '',
+  };
+};
+
+const formatDate = (value?: string): string => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toISOString().slice(0, 10);
+};
+
+const slugify = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+const unwrapResult = <T>(payload: unknown): T => {
+  if (payload && typeof payload === 'object' && 'result' in payload) {
+    const wrapped = payload as { result?: T };
+    if (wrapped.result !== undefined) {
+      return wrapped.result;
+    }
+  }
+  return payload as T;
+};
+
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (axios.isAxiosError(error)) {
+    const responseData = error.response?.data as { message?: string } | string | undefined;
+
+    if (typeof responseData === 'object' && responseData && typeof responseData.message === 'string' && responseData.message.trim()) {
+      return responseData.message;
+    }
+
+    if (typeof responseData === 'string' && responseData.trim()) {
+      return responseData;
+    }
+
+    if (error.code === 'ERR_NETWORK') {
+      return 'Khong the ket noi den backend. Vui long kiem tra server.';
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
+// ================================================================
+// TYPES
+// ================================================================
 
 export type AdminUserRow = {
   id: string;
@@ -43,6 +114,32 @@ export type PageResponse<T> = {
   first: boolean;
   last: boolean;
 };
+
+export type PaymentResponse = {
+  orderCode: number;
+  amount: number;
+  description: string;
+  status: string;
+  qrCode: string;
+  checkoutUrl: string;
+};
+
+export type MedicalService = {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  duration?: number;
+  category?: string;
+  image?: string;
+  icon?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+// ================================================================
+// API TYPES (Internal)
+// ================================================================
 
 type AppointmentApi = {
   id: number;
@@ -160,6 +257,28 @@ type NewsApi = {
   featured?: boolean;
 };
 
+type SpecialtyApi = {
+  id: number;
+  name: string;
+  icon?: string;
+  description?: string;
+  isActive?: boolean;
+};
+
+type MedicalServiceApi = {
+  id: number;
+  name: string;
+  description?: string;
+  icon?: string;
+  category?: string;
+  price?: string | number;
+  image?: string;
+};
+
+// ================================================================
+// MAP FUNCTIONS
+// ================================================================
+
 const mapAdminUser = (u: AdminUserApi): AdminUserRow => {
   const roleNames = (u.roles ?? []).map((r) => String(r.roleName ?? r.id ?? '').replace(/^ROLE_/, ''));
   const role: AdminUserRow['role'] = roleNames.includes('ADMIN')
@@ -207,16 +326,6 @@ const mapBanner = (b: BannerApi): Banner => ({
   createdAt: b.createdAt ? formatDate(b.createdAt) : '',
 });
 
-const slugify = (value: string): string =>
-  value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-
 const mapNews = (n: NewsApi): BlogPost => {
   const created = n.publishedAt ? formatDate(n.publishedAt) : formatDate(new Date().toISOString());
   const title = n.title ?? '';
@@ -235,13 +344,6 @@ const mapNews = (n: NewsApi): BlogPost => {
     createdAt: created,
     authorName: n.author ?? 'Admin',
   };
-};
-
-const formatDate = (value?: string): string => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toISOString().slice(0, 10);
 };
 
 const mapAppointment = (a: AppointmentApi): Appointment => ({
@@ -306,15 +408,6 @@ const mapNotification = (n: NotificationApi): Notification => ({
   createdAt: n.createdAt,
 });
 
-export type PaymentResponse = {
-  orderCode: number;
-  amount: number;
-  description: string;
-  status: string;
-  qrCode: string;
-  checkoutUrl: string;
-};
-
 const mapPayment = (payment: PaymentApi): PaymentResponse => ({
   orderCode: Number(payment.orderCode ?? 0),
   amount: Number(payment.amount ?? 0),
@@ -324,16 +417,19 @@ const mapPayment = (payment: PaymentApi): PaymentResponse => ({
   checkoutUrl: payment.checkoutUrl ?? '',
 });
 
-const unwrapResult = <T>(payload: unknown): T => {
-  if (payload && typeof payload === 'object' && 'result' in payload) {
-    const wrapped = payload as { result?: T };
-    if (wrapped.result !== undefined) {
-      return wrapped.result;
-    }
-  }
+const mapMedicalServiceToType = (apiService: MedicalServiceApi): MedicalService => ({
+  id: apiService.id,
+  name: apiService.name,
+  description: apiService.description || '',
+  price: Number(apiService.price) || 0,
+  category: apiService.category,
+  image: apiService.image,
+  icon: apiService.icon,
+});
 
-  return payload as T;
-};
+// ================================================================
+// APPOINTMENT APIs
+// ================================================================
 
 export const getPatientAppointments = async (patientId: string): Promise<Appointment[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<AppointmentApi>>>(`/appointments/patients/${patientId}?size=200`);
@@ -350,12 +446,16 @@ export const getAppointment = async (id: number): Promise<Appointment> => {
   return mapAppointment(data.result);
 };
 
-export const createAppointment = async (patientId: string, doctorId: string, payload: {
-  appointmentDate: string;
-  startTime: string;
-  reason: string;
-  appointmentType: 'FIRST_VISIT' | 'REVISIT';
-}): Promise<Appointment> => {
+export const createAppointment = async (
+  patientId: string, 
+  doctorId: string, 
+  payload: {
+    appointmentDate: string;
+    startTime: string;
+    reason: string;
+    appointmentType: 'FIRST_VISIT' | 'REVISIT';
+  }
+): Promise<Appointment> => {
   const { data } = await axiosInstance.post<ApiResponse<AppointmentApi>>(
     `/appointments/patients/${patientId}/doctors/${doctorId}`,
     payload
@@ -373,14 +473,71 @@ export const cancelAppointment = async (id: number): Promise<void> => {
 };
 
 export const createAppointmentPayment = async (appointmentId: number): Promise<PaymentResponse> => {
-  const { data } = await axiosInstance.post(`/payment/appointment/${appointmentId}`);
-  return mapPayment(unwrapResult<PaymentApi>(data));
+  try {
+    const { data } = await axiosInstance.post(`/payment/appointment/${appointmentId}`);
+    return mapPayment(unwrapResult<PaymentApi>(data));
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Khong the tao thanh toan lich hen'));
+  }
+};
+
+// ================================================================
+// MEDICAL SERVICE APIs
+// ================================================================
+
+export const getAllMedicalServices = async (): Promise<MedicalService[]> => {
+  const { data } = await axiosInstance.get<ApiResponse<PageResponse<MedicalServiceApi>>>(`/medical-services?page=0&size=200`);
+  return (data.result?.content ?? []).map(mapMedicalServiceToType);
+};
+
+export const getMedicalService = async (id: number): Promise<MedicalService> => {
+  const { data } = await axiosInstance.get<ApiResponse<MedicalServiceApi>>(`/medical-services/${id}`);
+  return mapMedicalServiceToType(data.result);
 };
 
 export const createMedicalServicePayment = async (medicalServiceId: number): Promise<PaymentResponse> => {
-  const { data } = await axiosInstance.post(`/payment/medical-service/${medicalServiceId}`);
-  return mapPayment(unwrapResult<PaymentApi>(data));
+  try {
+    const { data } = await axiosInstance.post(`/payment/medical-service/${medicalServiceId}`);
+    return mapPayment(unwrapResult<PaymentApi>(data));
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, 'Khong the tao thanh toan dich vu'));
+  }
 };
+
+export const createMedicalServiceApi = async (payload: {
+  name: string;
+  description?: string;
+  icon?: string;
+  category?: string;
+  price?: string;
+  image?: string;
+}): Promise<MedicalService> => {
+  const { data } = await axiosInstance.post<ApiResponse<MedicalServiceApi>>('/medical-services', payload);
+  return mapMedicalServiceToType(data.result);
+};
+
+export const updateMedicalServiceApi = async (
+  id: number, 
+  payload: {
+    name: string;
+    description?: string;
+    icon?: string;
+    category?: string;
+    price?: string;
+    image?: string;
+  }
+): Promise<MedicalService> => {
+  const { data } = await axiosInstance.put<ApiResponse<MedicalServiceApi>>(`/medical-services/${id}`, payload);
+  return mapMedicalServiceToType(data.result);
+};
+
+export const deleteMedicalServiceApi = async (id: number): Promise<void> => {
+  await axiosInstance.delete(`/medical-services/${id}`);
+};
+
+// ================================================================
+// MEDICAL RECORD APIs
+// ================================================================
 
 export const getPatientMedicalRecords = async (patientId: string): Promise<MedicalRecord[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<MedicalRecordApi>>>(`/medical-records/patients/${patientId}?size=200`);
@@ -406,9 +563,13 @@ export const createMedicalRecord = async (payload: {
   patientId: string;
   doctorId: string;
   appointmentId: number;
-}) => {
+}): Promise<void> => {
   await axiosInstance.post('/medical-records', payload);
 };
+
+// ================================================================
+// NOTIFICATION APIs
+// ================================================================
 
 export const getPatientNotifications = async (patientId: string): Promise<Notification[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<NotificationApi>>>(`/notifications/patients/${patientId}?size=200`);
@@ -427,6 +588,10 @@ export const markNotificationRead = async (id: number): Promise<void> => {
 export const markAllNotificationsRead = async (patientId: string): Promise<void> => {
   await axiosInstance.patch(`/notifications/patients/${patientId}/read-all`);
 };
+
+// ================================================================
+// REVIEW APIs
+// ================================================================
 
 export const getPatientReviews = async (patientId: string): Promise<Review[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<ReviewApi>>>(`/reviews/patients/${patientId}?size=200`);
@@ -447,6 +612,10 @@ export const getAdminReviewsAggregate = async (): Promise<Review[]> => {
 export const deleteReview = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/reviews/${id}`);
 };
+
+// ================================================================
+// ADMIN APIs
+// ================================================================
 
 export const getAdminAppointmentsAggregate = async (): Promise<Appointment[]> => {
   const doctorsResp = await axiosInstance.get<ApiResponse<PageResponse<{ id: string }>>>(`/doctors?page=0&size=200`);
@@ -549,6 +718,10 @@ export const deleteAdminDoctor = async (id: string): Promise<void> => {
   await axiosInstance.delete(`/doctors/${id}`);
 };
 
+// ================================================================
+// BANNER APIs
+// ================================================================
+
 export const getAdminBanners = async (): Promise<Banner[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<BannerApi>>>(`/banners?page=0&size=200`);
   return (data.result?.content ?? []).map(mapBanner);
@@ -584,6 +757,10 @@ export const updateAdminBanner = async (
 export const deleteAdminBanner = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/banners/${id}`);
 };
+
+// ================================================================
+// NEWS APIs
+// ================================================================
 
 export const getAdminNews = async (): Promise<BlogPost[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<NewsApi>>>(`/news?page=0&size=200`);
@@ -643,60 +820,25 @@ export const deleteAdminNews = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/news/${id}`);
 };
 
-// Specialties
-type SpecialtyApi = {
-  id: number;
-  name: string;
-  icon?: string;
-  description?: string;
-  isActive?: boolean;
-};
+// ================================================================
+// SPECIALTY APIs
+// ================================================================
 
 export const getAllSpecialties = async (): Promise<SpecialtyApi[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<SpecialtyApi>>>(`/specialties?page=0&size=200`);
   return data.result?.content ?? [];
 };
 
-export const createSpecialty = async (payload: { name: string; icon?: string; description?: string }) => {
+export const createSpecialty = async (payload: { name: string; icon?: string; description?: string }): Promise<SpecialtyApi> => {
   const { data } = await axiosInstance.post<ApiResponse<SpecialtyApi>>('/specialties', payload);
   return data.result;
 };
 
-export const updateSpecialty = async (id: number, payload: { name: string; icon?: string; description?: string }) => {
+export const updateSpecialty = async (id: number, payload: { name: string; icon?: string; description?: string }): Promise<SpecialtyApi> => {
   const { data } = await axiosInstance.put<ApiResponse<SpecialtyApi>>(`/specialties/${id}`, payload);
   return data.result;
 };
 
-export const deleteSpecialty = async (id: number) => {
+export const deleteSpecialty = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/specialties/${id}`);
-};
-
-// Medical services
-type MedicalServiceApi = {
-  id: number;
-  name: string;
-  description?: string;
-  icon?: string;
-  category?: string;
-  price?: string;
-  image?: string;
-};
-
-export const getAllMedicalServices = async (): Promise<MedicalServiceApi[]> => {
-  const { data } = await axiosInstance.get<ApiResponse<PageResponse<MedicalServiceApi>>>(`/medical-services?page=0&size=200`);
-  return data.result?.content ?? [];
-};
-
-export const createMedicalServiceApi = async (payload: { name: string; description?: string; icon?: string; category?: string; price?: string; image?: string }) => {
-  const { data } = await axiosInstance.post<ApiResponse<MedicalServiceApi>>('/medical-services', payload);
-  return data.result;
-};
-
-export const updateMedicalServiceApi = async (id: number, payload: { name: string; description?: string; icon?: string; category?: string; price?: string; image?: string }) => {
-  const { data } = await axiosInstance.put<ApiResponse<MedicalServiceApi>>(`/medical-services/${id}`, payload);
-  return data.result;
-};
-
-export const deleteMedicalServiceApi = async (id: number) => {
-  await axiosInstance.delete(`/medical-services/${id}`);
 };

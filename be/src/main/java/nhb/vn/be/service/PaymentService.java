@@ -52,7 +52,6 @@ public class PaymentService {
     // FLOW 1: Khách chọn Appointment → thanh toán
     // ================================================================
     public PaymentResponseDTO createAppointmentPayment(Long appointmentId) throws Exception {
-
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new RuntimeException("Appointment không tồn tại: " + appointmentId));
 
@@ -69,7 +68,9 @@ public class PaymentService {
                 ? appointment.getDoctor().getClinicFee().longValue()
                 : 200000L; // fallback mặc định nếu chưa gắn bác sĩ
 
-        String description = "Thanh toan lich kham #" + appointmentId;
+        // Cắt mô tả về 25 ký tự (yêu cầu của PayOS)
+        String rawDescription = "Thanh toan lich kham #" + appointmentId;
+        String description = truncateDescription(rawDescription);
 
         return buildPaymentAndCallPayOS(
                 PaymentTargetType.APPOINTMENT,
@@ -83,11 +84,12 @@ public class PaymentService {
     // FLOW 2: Khách chọn MedicalService → thanh toán
     // ================================================================
     public PaymentResponseDTO createMedicalServicePayment(Long medicalServiceId) throws Exception {
-
         MedicalService service = medicalServiceRepository.findById(medicalServiceId)
                 .orElseThrow(() -> new RuntimeException("MedicalService không tồn tại: " + medicalServiceId));
 
-        String description = "Thanh toan dich vu: " + service.getName();
+        // Cắt mô tả về 25 ký tự (yêu cầu của PayOS)
+        String rawDescription = "Thanh toan dich vu: " + service.getName();
+        String description = truncateDescription(rawDescription);
 
         return buildPaymentAndCallPayOS(
                 PaymentTargetType.MEDICAL_SERVICE,
@@ -151,6 +153,23 @@ public class PaymentService {
     // PRIVATE HELPERS
     // ================================================================
 
+    /**
+     * Cắt mô tả về tối đa 25 ký tự (theo yêu cầu của PayOS)
+     * @param description Mô tả gốc
+     * @return Mô tả đã được cắt (tối đa 25 ký tự)
+     */
+    private String truncateDescription(String description) {
+        if (description == null) {
+            return "Thanh toan";
+        }
+        if (description.length() > 25) {
+            String truncated = description.substring(0, 25);
+            log.warn("Description truncated from '{}' to '{}'", description, truncated);
+            return truncated;
+        }
+        return description;
+    }
+
     private PaymentResponseDTO buildPaymentAndCallPayOS(
             PaymentTargetType targetType,
             Long targetId,
@@ -162,6 +181,9 @@ public class PaymentService {
             throw new RuntimeException("Số tiền không hợp lệ: " + amount);
         }
 
+        // Đảm bảo description không quá 25 ký tự (an toàn bổ sung)
+        String finalDescription = truncateDescription(description);
+
         // Tạo orderCode nằm trong range PayOS chấp nhận (<= 16 chữ số)
         long orderCode = generateValidOrderCode();
 
@@ -169,7 +191,7 @@ public class PaymentService {
         Payment payment = Payment.builder()
                 .orderCode(orderCode)
                 .amount(amount)
-                .description(description)
+                .description(finalDescription)
                 .status("PENDING")
                 .targetType(targetType)
                 .targetId(targetId)
@@ -180,16 +202,19 @@ public class PaymentService {
         // Gọi PayOS API
         PayOS payOS = new PayOS(clientId, apiKey, checksumKey);
 
+        // Tạo item với name cũng không quá 25 ký tự
+        String itemName = finalDescription.length() > 25 ? finalDescription.substring(0, 25) : finalDescription;
+
         PaymentLinkItem item = PaymentLinkItem.builder()
-                .name(description.length() > 25 ? description.substring(0, 25) : description)
+                .name(itemName)
                 .quantity(1)
-            .price(amount)
+                .price(amount)
                 .build();
 
         CreatePaymentLinkRequest paymentData = CreatePaymentLinkRequest.builder()
                 .orderCode(orderCode)
-            .amount(amount)
-                .description(description)
+                .amount(amount)
+                .description(finalDescription)
                 .item(item)
                 .returnUrl(returnUrl)
                 .cancelUrl(cancelUrl)
@@ -201,11 +226,11 @@ public class PaymentService {
         } catch (InvalidSignatureException ex) {
             log.warn("PayOS response signature mismatch. Fallback to request-signing only mode for create link. orderCode={}", orderCode);
             RequestOptions<CreatePaymentLinkRequest> requestOptions = RequestOptions.<CreatePaymentLinkRequest>builder()
-                .body(paymentData)
-                .signatureOpts(RequestOptions.SignatureOptions.builder()
-                    .request(RequestOptions.RequestSigning.CREATE_PAYMENT_LINK)
-                    .build())
-                .build();
+                    .body(paymentData)
+                    .signatureOpts(RequestOptions.SignatureOptions.builder()
+                            .request(RequestOptions.RequestSigning.CREATE_PAYMENT_LINK)
+                            .build())
+                    .build();
             response = payOS.post("/v2/payment-requests", CreatePaymentLinkResponse.class, requestOptions);
         }
 
@@ -217,7 +242,7 @@ public class PaymentService {
         return PaymentResponseDTO.builder()
                 .orderCode(orderCode)
                 .amount(amount)
-                .description(description)
+                .description(finalDescription)
                 .status("PENDING")
                 .qrCode(response.getQrCode())
                 .checkoutUrl(response.getCheckoutUrl())
@@ -238,7 +263,6 @@ public class PaymentService {
 
     private void updateTargetOnSuccess(Payment payment) {
         switch (payment.getTargetType()) {
-
             case APPOINTMENT -> {
                 Appointment appointment = appointmentRepository
                         .findById(payment.getTargetId())

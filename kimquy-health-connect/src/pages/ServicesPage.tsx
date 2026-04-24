@@ -1,27 +1,16 @@
+// src/pages/ServicesPage.tsx
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { services } from '../data/mockData';
-import { createMedicalServicePayment } from '../services/healthApi';
 import styles from './DoctorsPage.module.css';
-import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const ServicesPage = () => {
-  const [payingId, setPayingId] = useState<number | null>(null);
+  const navigate = useNavigate();
 
-  const handlePay = async (serviceId: number) => {
-    try {
-      setPayingId(serviceId);
-      const payment = await createMedicalServicePayment(serviceId);
-      if (!payment.checkoutUrl) {
-        throw new Error('Backend did not return checkoutUrl');
-      }
-      window.location.href = payment.checkoutUrl;
-    } catch (error) {
-      console.error(error);
-      alert('Không tạo được link thanh toán cho dịch vụ này.');
-    } finally {
-      setPayingId(null);
-    }
+  const handleBookService = (serviceId: number) => {
+    // Navigate to booking page instead of direct payment
+    navigate(`/services/${serviceId}/book`);
   };
 
   return (
@@ -31,6 +20,7 @@ const ServicesPage = () => {
         <h1>Dịch vụ khám</h1>
         <p>Đa dạng gói khám phù hợp với mọi nhu cầu</p>
       </div>
+
       <div className={styles.container}>
         <div className={styles.grid}>
           {services.map((s) => (
@@ -45,15 +35,14 @@ const ServicesPage = () => {
                 <div style={{ display: 'grid', gap: 8, marginTop: '0.75rem' }}>
                   <button
                     className={styles.cardBtn}
-                    onClick={() => handlePay(s.id)}
-                    disabled={payingId === s.id}
+                    onClick={() => handleBookService(s.id)}
                     style={{ marginTop: 0 }}
                   >
-                    {payingId === s.id ? 'Đang tạo link...' : 'Thanh toán ngay'}
+                    Đặt dịch vụ
                   </button>
                   <button
                     className={styles.cardBtn}
-                    onClick={() => window.location.href = '/patient/booking'}
+                    onClick={() => navigate('/patient/booking')}
                     style={{ background: 'transparent', color: 'var(--color-primary)', border: '1px solid var(--color-primary)' }}
                   >
                     Đặt lịch khám
