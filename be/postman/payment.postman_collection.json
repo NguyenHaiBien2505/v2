@@ -1,0 +1,130 @@
+{
+  "info": {
+    "_postman_id": "d9b9f6b4-4b8d-4a0c-9b7c-2cb1d0d8e111",
+    "name": "KimQuy Health Connect - Payment API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Collection để test API payment của backend Spring Boot."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api/v2"
+    },
+    {
+      "key": "token",
+      "value": "YOUR_JWT_BEARER_TOKEN"
+    },
+    {
+      "key": "appointmentId",
+      "value": "1"
+    },
+    {
+      "key": "medicalServiceId",
+      "value": "1"
+    },
+    {
+      "key": "orderCode",
+      "value": "1234567890123"
+    }
+  ],
+  "item": [
+    {
+      "name": "Create appointment payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/payment/appointment/{{appointmentId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "payment",
+            "appointment",
+            "{{appointmentId}}"
+          ]
+        },
+        "description": "Tạo link thanh toán cho lịch hẹn."
+      },
+      "response": []
+    },
+    {
+      "name": "Create medical service payment",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json"
+          }
+        ],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/payment/medical-service/{{medicalServiceId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "payment",
+            "medical-service",
+            "{{medicalServiceId}}"
+          ]
+        },
+        "description": "Tạo link thanh toán cho dịch vụ y tế."
+      },
+      "response": []
+    },
+    {
+      "name": "Payment webhook callback",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"data\": {\n    \"orderCode\": {{orderCode}},\n    \"status\": \"PAID\",\n    \"transactionId\": \"payos_txn_001\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/payment/webhook",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "payment",
+            "webhook"
+          ]
+        },
+        "description": "Mô phỏng callback từ PayOS sau khi thanh toán hoàn tất."
+      },
+      "response": []
+    }
+  ]
+}

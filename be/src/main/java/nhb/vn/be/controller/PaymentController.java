@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/payment")
+@RequestMapping("/payment")
 @RequiredArgsConstructor
 @Slf4j
 public class PaymentController {
@@ -35,7 +35,6 @@ public class PaymentController {
     }
 
     // PayOS gọi về sau khi thanh toán xong
-    // Endpoint này phải public, không cần JWT
     @PostMapping("/webhook")
     public ResponseEntity<String> handleWebhook(@RequestBody Map<String, Object> payload) {
         try {

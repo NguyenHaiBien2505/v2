@@ -5,7 +5,7 @@ import DashboardLayout from '../../components/layout/DashboardLayout';
 import { patientSidebar } from './PatientDashboard';
 import { generateTimeSlots, type Appointment, type MedicalRecord } from '../../data/mockData';
 import { useAuthStore } from '../../store/authStore';
-import { cancelAppointment, createAppointment, getAppointment, getPatientMedicalRecords } from '../../services/healthApi';
+import { cancelAppointment, createAppointment, createAppointmentPayment, getAppointment, getPatientMedicalRecords } from '../../services/healthApi';
 import { sendNotification } from '../../services/notificationService';
 import dashStyles from './PatientDashboard.module.css';
 import styles from './PatientAppointmentDetail.module.css';
@@ -50,6 +50,8 @@ const PatientAppointmentDetail = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
+  const [isPaying, setIsPaying] = useState(false);
+  const slots = useMemo(() => generateTimeSlots(newDate), [newDate]);
 
   if (loading) {
     return (
@@ -72,6 +74,23 @@ const PatientAppointmentDetail = () => {
   const date = localDate ?? appointment.appointmentDate;
   const time = localTime ?? appointment.startTime;
   const canModify = status === 'PENDING' || status === 'CONFIRMED';
+  const canPay = status === 'PENDING' || status === 'CONFIRMED';
+
+  const handlePayment = async () => {
+    try {
+      setIsPaying(true);
+      const payment = await createAppointmentPayment(appointment.id);
+      if (!payment.checkoutUrl) {
+        throw new Error('Backend did not return checkoutUrl');
+      }
+      window.location.href = payment.checkoutUrl;
+    } catch (error) {
+      console.error(error);
+      alert('Không tạo được link thanh toán. Vui lòng thử lại sau.');
+    } finally {
+      setIsPaying(false);
+    }
+  };
 
   const handleCancel = () => {
     if (!cancelReason.trim()) { alert('Vui lòng nhập lý do hủy'); return; }
@@ -112,8 +131,6 @@ const PatientAppointmentDetail = () => {
     });
   };
 
-  const slots = useMemo(() => generateTimeSlots(newDate), [newDate]);
-
   return (
     <DashboardLayout sections={patientSidebar}>
       <button onClick={() => navigate(-1)} className={`${styles.btn} ${styles.btnOutline}`} style={{ marginBottom: '1rem', width: 'auto' }}>
@@ -141,6 +158,24 @@ const PatientAppointmentDetail = () => {
             <div className={styles.row}><span className={styles.label}>Trạng thái</span><span className={`status-badge status-badge--${status.toLowerCase()}`}>{statusLabel[status]}</span></div>
             <div className={styles.row}><span className={styles.label}><FiMapPin style={{ marginRight: 6 }} />Địa điểm</span><span className={styles.value}>Phòng khám Kim Quy</span></div>
           </div>
+
+          {canPay && (
+            <div className={styles.card}>
+              <div className={styles.cardTitle}>Thanh toán</div>
+              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                Thanh toán trực tiếp qua PayOS để giữ chỗ và cập nhật trạng thái lịch hẹn.
+              </p>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={handlePayment}
+                disabled={isPaying}
+                style={{ marginTop: '1rem', width: '100%' }}
+              >
+                {isPaying ? 'Đang tạo link thanh toán...' : 'Thanh toán ngay'}
+              </button>
+            </div>
+          )}
 
           <div className={styles.card}>
             <div className={styles.cardTitle}>Lý do khám</div>

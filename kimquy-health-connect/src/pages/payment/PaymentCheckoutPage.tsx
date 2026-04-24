@@ -1,0 +1,127 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiArrowLeft, FiExternalLink, FiShield, FiSmartphone } from 'react-icons/fi';
+import Header from '../../components/layout/Header';
+import Footer from '../../components/layout/Footer';
+import styles from './PaymentCheckoutPage.module.css';
+
+type PendingPayment = {
+  orderCode: number;
+  amount: number;
+  description: string;
+  status: string;
+  qrCode?: string;
+  checkoutUrl: string;
+  source?: 'appointment' | 'medical-service';
+};
+
+const STORAGE_KEY = 'pendingPayment';
+
+const PaymentCheckoutPage = () => {
+  const navigate = useNavigate();
+  const [payment, setPayment] = useState<PendingPayment | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      navigate('/patient/appointments', { replace: true });
+      return;
+    }
+
+    try {
+      setPayment(JSON.parse(raw) as PendingPayment);
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+      navigate('/patient/appointments', { replace: true });
+    }
+  }, [navigate]);
+
+  const qrImageSrc = useMemo(() => {
+    const qrCode = payment?.qrCode?.trim() ?? '';
+
+    if (
+      qrCode &&
+      (qrCode.startsWith('data:image/') || qrCode.startsWith('http://') || qrCode.startsWith('https://'))
+    ) {
+      return qrCode;
+    }
+
+    const fallbackValue = payment?.checkoutUrl?.trim() || String(payment?.orderCode ?? '');
+    if (!fallbackValue) {
+      return '';
+    }
+
+    return `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(fallbackValue)}`;
+  }, [payment]);
+
+  const goToPayOS = () => {
+    if (!payment?.checkoutUrl) return;
+    localStorage.removeItem(STORAGE_KEY);
+    window.location.href = payment.checkoutUrl;
+  };
+
+  if (!payment) {
+    return null;
+  }
+
+  return (
+    <div className={styles.page}>
+      <Header />
+      <main className={styles.main}>
+        <section className={styles.hero}>
+          <div className={styles.eyebrow}>PAYMENT CHECKOUT</div>
+          <h1>Thanh toán đơn hàng</h1>
+          <p>Kiểm tra thông tin bên dưới và mở cổng thanh toán PayOS để hoàn tất giao dịch.</p>
+        </section>
+
+        <section className={styles.grid}>
+          <article className={styles.card}>
+            <h2>Thông tin thanh toán</h2>
+            <div className={styles.infoRow}><span>Mã đơn hàng</span><strong>{payment.orderCode}</strong></div>
+            <div className={styles.infoRow}><span>Số tiền</span><strong>{payment.amount.toLocaleString('vi-VN')} ₫</strong></div>
+            <div className={styles.infoRow}><span>Nội dung</span><strong>{payment.description}</strong></div>
+            <div className={styles.infoRow}><span>Trạng thái</span><strong>{payment.status}</strong></div>
+
+            <div className={styles.actions}>
+              <button type="button" className={styles.primaryBtn} onClick={goToPayOS}>
+                <FiExternalLink />
+                Mở cổng thanh toán
+              </button>
+              <button type="button" className={styles.secondaryBtn} onClick={() => navigate(-1)}>
+                <FiArrowLeft />
+                Quay lại
+              </button>
+            </div>
+          </article>
+
+          <article className={styles.card}>
+            <h2>QR thanh toán</h2>
+            {qrImageSrc ? (
+              <div className={styles.qrWrap}>
+                <img src={qrImageSrc} alt="QR thanh toán PayOS" className={styles.qrImage} />
+                <p>Quét mã bằng app ngân hàng hoặc ví điện tử để thanh toán.</p>
+              </div>
+            ) : (
+              <div className={styles.qrFallback}>
+                <FiSmartphone />
+                <p>Chưa có QR từ backend. Bạn có thể mở cổng thanh toán bằng nút bên trái.</p>
+              </div>
+            )}
+          </article>
+        </section>
+
+        <section className={styles.hints}>
+          <div className={styles.hint}><FiShield /> Giao dịch sẽ tự cập nhật trạng thái về backend sau khi PayOS callback.</div>
+          <div className={styles.hint}><FiSmartphone /> Nếu bạn bấm hủy trên cổng thanh toán, hệ thống sẽ dẫn về màn hình thất bại.</div>
+        </section>
+
+        <div className={styles.bottomLink}>
+          <Link to="/patient/appointments">Xem danh sách lịch hẹn</Link>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
+export default PaymentCheckoutPage;

@@ -14,13 +14,15 @@ import nhb.vn.be.repository.PaymentRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import vn.payos.PayOS;
-import vn.payos.type.CheckoutResponseData;
-import vn.payos.type.ItemData;
-import vn.payos.type.PaymentData;
-import vn.payos.type.Webhook;
+import vn.payos.core.RequestOptions;
+import vn.payos.exception.InvalidSignatureException;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
+import vn.payos.model.v2.paymentRequests.PaymentLinkItem;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 @Service
@@ -160,10 +162,8 @@ public class PaymentService {
             throw new RuntimeException("Số tiền không hợp lệ: " + amount);
         }
 
-        // Tạo orderCode unique
-        long orderCode = Long.parseLong(
-                System.currentTimeMillis() + "" + (System.nanoTime() % 100000)
-        );
+        // Tạo orderCode nằm trong range PayOS chấp nhận (<= 16 chữ số)
+        long orderCode = generateValidOrderCode();
 
         // Lưu Payment vào DB trước
         Payment payment = Payment.builder()
@@ -180,22 +180,34 @@ public class PaymentService {
         // Gọi PayOS API
         PayOS payOS = new PayOS(clientId, apiKey, checksumKey);
 
-        ItemData item = ItemData.builder()
+        PaymentLinkItem item = PaymentLinkItem.builder()
                 .name(description.length() > 25 ? description.substring(0, 25) : description)
                 .quantity(1)
-                .price(amount.intValue())
+            .price(amount)
                 .build();
 
-        PaymentData paymentData = PaymentData.builder()
+        CreatePaymentLinkRequest paymentData = CreatePaymentLinkRequest.builder()
                 .orderCode(orderCode)
-                .amount(amount.intValue())
+            .amount(amount)
                 .description(description)
                 .item(item)
                 .returnUrl(returnUrl)
                 .cancelUrl(cancelUrl)
                 .build();
 
-        CheckoutResponseData response = payOS.createPaymentLink(paymentData);
+        CreatePaymentLinkResponse response;
+        try {
+            response = payOS.paymentRequests().create(paymentData);
+        } catch (InvalidSignatureException ex) {
+            log.warn("PayOS response signature mismatch. Fallback to request-signing only mode for create link. orderCode={}", orderCode);
+            RequestOptions<CreatePaymentLinkRequest> requestOptions = RequestOptions.<CreatePaymentLinkRequest>builder()
+                .body(paymentData)
+                .signatureOpts(RequestOptions.SignatureOptions.builder()
+                    .request(RequestOptions.RequestSigning.CREATE_PAYMENT_LINK)
+                    .build())
+                .build();
+            response = payOS.post("/v2/payment-requests", CreatePaymentLinkResponse.class, requestOptions);
+        }
 
         // Cập nhật URL và QR từ PayOS trả về
         payment.setCheckoutUrl(response.getCheckoutUrl());
@@ -210,6 +222,18 @@ public class PaymentService {
                 .qrCode(response.getQrCode())
                 .checkoutUrl(response.getCheckoutUrl())
                 .build();
+    }
+
+    private long generateValidOrderCode() {
+        // epochMillis(13 digits) + suffix(3 digits) => 16 digits, nằm trong safe range của PayOS
+        for (int i = 0; i < 10; i++) {
+            long candidate = System.currentTimeMillis() * 1000
+                    + ThreadLocalRandom.current().nextInt(100, 1000);
+            if (!paymentRepository.findByOrderCode(candidate).isPresent()) {
+                return candidate;
+            }
+        }
+        throw new RuntimeException("Không thể tạo orderCode hợp lệ, vui lòng thử lại");
     }
 
     private void updateTargetOnSuccess(Payment payment) {

@@ -1,9 +1,29 @@
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { services } from '../data/mockData';
+import { createMedicalServicePayment } from '../services/healthApi';
 import styles from './DoctorsPage.module.css';
+import { useState } from 'react';
 
 const ServicesPage = () => {
+  const [payingId, setPayingId] = useState<number | null>(null);
+
+  const handlePay = async (serviceId: number) => {
+    try {
+      setPayingId(serviceId);
+      const payment = await createMedicalServicePayment(serviceId);
+      if (!payment.checkoutUrl) {
+        throw new Error('Backend did not return checkoutUrl');
+      }
+      window.location.href = payment.checkoutUrl;
+    } catch (error) {
+      console.error(error);
+      alert('Không tạo được link thanh toán cho dịch vụ này.');
+    } finally {
+      setPayingId(null);
+    }
+  };
+
   return (
     <div className={styles.page}>
       <Header />
@@ -22,9 +42,23 @@ const ServicesPage = () => {
                   <span className={styles.fee}>{s.price.toLocaleString('vi-VN')}₫</span>
                   <span>{s.durationMinutes} phút</span>
                 </div>
-                <button className={styles.cardBtn} onClick={() => window.location.href = '/patient/booking'}>
-                  Đặt lịch khám
-                </button>
+                <div style={{ display: 'grid', gap: 8, marginTop: '0.75rem' }}>
+                  <button
+                    className={styles.cardBtn}
+                    onClick={() => handlePay(s.id)}
+                    disabled={payingId === s.id}
+                    style={{ marginTop: 0 }}
+                  >
+                    {payingId === s.id ? 'Đang tạo link...' : 'Thanh toán ngay'}
+                  </button>
+                  <button
+                    className={styles.cardBtn}
+                    onClick={() => window.location.href = '/patient/booking'}
+                    style={{ background: 'transparent', color: 'var(--color-primary)', border: '1px solid var(--color-primary)' }}
+                  >
+                    Đặt lịch khám
+                  </button>
+                </div>
               </div>
             </div>
           ))}

@@ -6,10 +6,42 @@ import Header from '../../components/layout/Header';
 import { specialties, doctors, generateTimeSlots } from '../../data/mockData';
 import type { Specialty, Doctor, TimeSlot } from '../../data/mockData';
 import { useAuthStore } from '../../store/authStore';
-import { createAppointment } from '../../services/healthApi';
+import { createAppointment, createAppointmentPayment } from '../../services/healthApi';
 import styles from './BookingPage.module.css';
 
 const stepLabels = ['Chuyên khoa', 'Bác sĩ', 'Ngày khám', 'Giờ khám', 'Thông tin', 'Xác nhận'];
+
+const getErrorMessage = (error: unknown, fallback: string): string => {
+  if (!error || typeof error !== 'object') return fallback;
+
+  const err = error as {
+    message?: string;
+    response?: {
+      data?: unknown;
+    };
+  };
+
+  const payload = err.response?.data;
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
+
+  if (payload && typeof payload === 'object') {
+    const data = payload as { message?: unknown; error?: unknown };
+    if (typeof data.message === 'string' && data.message.trim()) {
+      return data.message;
+    }
+    if (typeof data.error === 'string' && data.error.trim()) {
+      return data.error;
+    }
+  }
+
+  if (typeof err.message === 'string' && err.message.trim()) {
+    return err.message;
+  }
+
+  return fallback;
+};
 
 const BookingPage = () => {
   const navigate = useNavigate();
@@ -21,7 +53,7 @@ const BookingPage = () => {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
-  const [booked, setBooked] = useState(false);
+  const [bookingFinished, setBookingFinished] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Lọc bác sĩ theo chuyên khoa
@@ -66,18 +98,47 @@ const BookingPage = () => {
 
   const handleNext = async () => {
     if (step === 5) {
-      if (!profile?.id || !selectedDate || !selectedSlot) return;
+      if (!profile?.id || !selectedDate || !selectedSlot) {
+        alert('Vui lòng đăng nhập và chọn đầy đủ ngày giờ khám trước khi thanh toán.');
+        if (!profile?.id) navigate('/login');
+        return;
+      }
       const doctor = selectedDoc || filteredDocs[0];
       if (!doctor) return;
       setSubmitting(true);
-      await createAppointment(profile.id, String(doctor.id), {
-        appointmentDate: selectedDate,
-        startTime: `${selectedSlot.time}:00`,
-        reason,
-        appointmentType: 'FIRST_VISIT',
-      }).catch(() => null);
-      setSubmitting(false);
-      setBooked(true);
+      let createdAppointmentId: number | null = null;
+      try {
+        const appointment = await createAppointment(profile.id, String(doctor.id), {
+          appointmentDate: selectedDate,
+          startTime: `${selectedSlot.time}:00`,
+          reason,
+          appointmentType: 'FIRST_VISIT',
+        });
+        createdAppointmentId = appointment.id;
+
+        const payment = await createAppointmentPayment(appointment.id);
+        if (!payment.checkoutUrl) {
+          throw new Error('Backend did not return checkoutUrl');
+        }
+
+        setBookingFinished(true);
+        localStorage.setItem('pendingPayment', JSON.stringify({
+          ...payment,
+          source: 'appointment',
+        }));
+        navigate('/payment/checkout');
+      } catch (error) {
+        console.error(error);
+        const message = getErrorMessage(error, 'Không thể khởi tạo thanh toán. Vui lòng thử lại.');
+        if (createdAppointmentId) {
+          alert(`Đặt lịch thành công nhưng tạo thanh toán thất bại: ${message}`);
+          navigate(`/patient/appointments/${createdAppointmentId}`);
+        } else {
+          alert(message);
+        }
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
     setStep((s) => s + 1);
@@ -86,7 +147,7 @@ const BookingPage = () => {
   const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
   const dayLabels = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
-  if (booked) {
+  if (bookingFinished) {
     return (
       <div>
         <Header />
@@ -95,12 +156,12 @@ const BookingPage = () => {
             <div className={styles.card}>
               <div className={styles.success}>
                 <div className={styles.successIcon}><FaCheckCircle /></div>
-                <h2 className={styles.successTitle}>Đặt lịch thành công!</h2>
+                <h2 className={styles.successTitle}>Đang chuyển sang thanh toán...</h2>
                 <p className={styles.successMsg}>
-                  Lịch hẹn của bạn đã được ghi nhận. Chúng tôi sẽ gửi email xác nhận trong ít phút.
+                  Lịch hẹn đã được ghi nhận. Hệ thống đang mở cổng thanh toán PayOS.
                 </p>
                 <button className={styles.btnSuccess} onClick={() => navigate('/patient/appointments')}>
-                  Xem lịch hẹn
+                  Quay lại lịch hẹn
                 </button>
                 <button className={styles.btnSuccess} style={{ background: 'var(--color-secondary)' }} onClick={() => navigate('/')}>
                   Về trang chủ

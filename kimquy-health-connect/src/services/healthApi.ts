@@ -94,6 +94,15 @@ type NotificationApi = {
   createdAt: string;
 };
 
+type PaymentApi = {
+  orderCode?: number;
+  amount?: number;
+  description?: string;
+  status?: string;
+  qrCode?: string;
+  checkoutUrl?: string;
+};
+
 type AdminUserApi = {
   id: string;
   username: string;
@@ -297,6 +306,35 @@ const mapNotification = (n: NotificationApi): Notification => ({
   createdAt: n.createdAt,
 });
 
+export type PaymentResponse = {
+  orderCode: number;
+  amount: number;
+  description: string;
+  status: string;
+  qrCode: string;
+  checkoutUrl: string;
+};
+
+const mapPayment = (payment: PaymentApi): PaymentResponse => ({
+  orderCode: Number(payment.orderCode ?? 0),
+  amount: Number(payment.amount ?? 0),
+  description: payment.description ?? '',
+  status: payment.status ?? 'PENDING',
+  qrCode: payment.qrCode ?? '',
+  checkoutUrl: payment.checkoutUrl ?? '',
+});
+
+const unwrapResult = <T>(payload: unknown): T => {
+  if (payload && typeof payload === 'object' && 'result' in payload) {
+    const wrapped = payload as { result?: T };
+    if (wrapped.result !== undefined) {
+      return wrapped.result;
+    }
+  }
+
+  return payload as T;
+};
+
 export const getPatientAppointments = async (patientId: string): Promise<Appointment[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<AppointmentApi>>>(`/appointments/patients/${patientId}?size=200`);
   return (data.result?.content ?? []).map(mapAppointment);
@@ -332,6 +370,16 @@ export const updateAppointmentStatus = async (id: number, status: Appointment['s
 
 export const cancelAppointment = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/appointments/${id}`);
+};
+
+export const createAppointmentPayment = async (appointmentId: number): Promise<PaymentResponse> => {
+  const { data } = await axiosInstance.post(`/payment/appointment/${appointmentId}`);
+  return mapPayment(unwrapResult<PaymentApi>(data));
+};
+
+export const createMedicalServicePayment = async (medicalServiceId: number): Promise<PaymentResponse> => {
+  const { data } = await axiosInstance.post(`/payment/medical-service/${medicalServiceId}`);
+  return mapPayment(unwrapResult<PaymentApi>(data));
 };
 
 export const getPatientMedicalRecords = async (patientId: string): Promise<MedicalRecord[]> => {

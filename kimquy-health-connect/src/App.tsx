@@ -12,6 +12,8 @@ import ServicesPage from './pages/ServicesPage';
 import { BlogListPage, BlogDetailPage } from './pages/BlogPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import PaymentCheckoutPage from './pages/payment/PaymentCheckoutPage';
+import PaymentResultPage from './pages/payment/PaymentResultPage';
 
 // Patient pages
 import PatientDashboard from './pages/patient/PatientDashboard';
@@ -63,6 +65,9 @@ const App = () => (
       <Route path="/blog/:slug" element={<BlogDetailPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/payment/checkout" element={<PaymentCheckoutPage />} />
+      <Route path="/payment/success" element={<PaymentResultPage mode="success" />} />
+      <Route path="/payment/cancel" element={<PaymentResultPage mode="cancel" />} />
 
       {/* Patient */}
       <Route path="/patient/dashboard" element={<ProtectedRoute allowedRoles={['PATIENT']}><PatientDashboard /></ProtectedRoute>} />
