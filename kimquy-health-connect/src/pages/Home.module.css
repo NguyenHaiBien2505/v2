@@ -28,6 +28,13 @@
   max-width: 600px;
   margin: 0 auto 2rem;
 }
+.heroActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
 .heroCta {
   display: inline-flex;
   align-items: center;
@@ -46,6 +53,26 @@
 .heroCta:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+.heroSecondaryCta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05rem;
+  padding: 0.85rem 1.35rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+  font-family: var(--font-main);
+}
+.heroSecondaryCta:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.16);
 }
 .heroStats {
   display: flex;
@@ -289,6 +316,8 @@
 }
 @media (max-width: 768px) {
   .heroTitle { font-size: 2rem; }
+  .heroActions { width: 100%; }
+  .heroCta, .heroSecondaryCta { width: 100%; justify-content: center; }
   .heroStats { gap: 1.5rem; }
   .specGrid { grid-template-columns: 1fr; }
   .docGrid { grid-template-columns: 1fr; }

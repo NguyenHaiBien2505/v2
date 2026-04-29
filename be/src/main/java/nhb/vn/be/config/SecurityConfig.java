@@ -29,6 +29,11 @@ public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINT =
             {"/users", "/auth/token-login", "/auth/introspect", "/auth/logout", "/auth/refresh"};
 
+    private static final String[] PUBLIC_CHAT_ENDPOINTS = {
+            "/chat/**",
+            "/api/v2/chat/**"
+    };
+
     private static final String[] PUBLIC_GET_ENDPOINTS = {
             "/users",
             "/doctors/**",
@@ -54,6 +59,7 @@ public class SecurityConfig {
                 requests.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/patients/register").permitAll()
                         .requestMatchers(HttpMethod.POST, PUBLIC_ENDPOINT).permitAll()
+                    .requestMatchers(PUBLIC_CHAT_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.PUT, "/users/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/payment/webhook").permitAll()

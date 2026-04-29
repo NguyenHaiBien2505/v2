@@ -57,9 +57,57 @@
   padding: 0.6rem; border-radius: var(--radius-sm); text-align: center; font-size: 0.9rem;
   cursor: pointer; transition: all var(--transition); border: 1.5px solid var(--color-border-light);
 }
-.slotAvailable:hover { border-color: var(--color-primary); background: var(--color-primary-bg); }
+.slotAvailable {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #86efac;
+}
+.slotAvailable:hover { border-color: #34d399; background: #d1fae5; }
 .slotSelected { border-color: var(--color-primary); background: var(--color-primary); color: #fff; }
-.slotBooked { background: #F5F5F5; color: #BDBDBD; cursor: not-allowed; }
+.slotBooked {
+  background: #4b5563;
+  color: #e5e7eb;
+  border-color: #4b5563;
+  cursor: not-allowed;
+}
+
+.slotLegend {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0.3rem 0 0.9rem;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+  color: var(--color-text-muted);
+}
+
+.legendSwatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.legendAvailable {
+  background: #ecfdf5;
+  border-color: #86efac;
+}
+
+.legendBooked {
+  background: #4b5563;
+  border-color: #4b5563;
+}
+
+.legendHint {
+  font-size: 0.82rem;
+  color: var(--color-primary);
+}
 
 /* Form */
 .formGroup { margin-bottom: 1.25rem; }

@@ -1,9 +1,16 @@
+// src/pages/PaymentCheckoutPage.tsx
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiExternalLink, FiShield, FiSmartphone } from 'react-icons/fi';
+import { FiArrowLeft, FiExternalLink, FiShield, FiSmartphone, FiCalendar, FiClock } from 'react-icons/fi';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import styles from './PaymentCheckoutPage.module.css';
+
+type BookingInfo = {
+  date: string;
+  time: string;
+  serviceName?: string;
+};
 
 type PendingPayment = {
   orderCode: number;
@@ -13,6 +20,7 @@ type PendingPayment = {
   qrCode?: string;
   checkoutUrl: string;
   source?: 'appointment' | 'medical-service';
+  bookingInfo?: BookingInfo;
 };
 
 const STORAGE_KEY = 'pendingPayment';
@@ -29,7 +37,8 @@ const PaymentCheckoutPage = () => {
     }
 
     try {
-      setPayment(JSON.parse(raw) as PendingPayment);
+      const parsed = JSON.parse(raw) as PendingPayment;
+      setPayment(parsed);
     } catch {
       localStorage.removeItem(STORAGE_KEY);
       navigate('/patient/appointments', { replace: true });
@@ -64,6 +73,10 @@ const PaymentCheckoutPage = () => {
     return null;
   }
 
+  const isMedicalService = payment.source === 'medical-service';
+  const backLink = isMedicalService ? '/services' : '/patient/appointments';
+  const backLabel = isMedicalService ? 'Quay lại danh sách dịch vụ' : 'Xem danh sách lịch hẹn';
+
   return (
     <div className={styles.page}>
       <Header />
@@ -77,10 +90,46 @@ const PaymentCheckoutPage = () => {
         <section className={styles.grid}>
           <article className={styles.card}>
             <h2>Thông tin thanh toán</h2>
-            <div className={styles.infoRow}><span>Mã đơn hàng</span><strong>{payment.orderCode}</strong></div>
-            <div className={styles.infoRow}><span>Số tiền</span><strong>{payment.amount.toLocaleString('vi-VN')} ₫</strong></div>
-            <div className={styles.infoRow}><span>Nội dung</span><strong>{payment.description}</strong></div>
-            <div className={styles.infoRow}><span>Trạng thái</span><strong>{payment.status}</strong></div>
+            <div className={styles.infoRow}>
+              <span>Mã đơn hàng</span>
+              <strong>{payment.orderCode}</strong>
+            </div>
+            <div className={styles.infoRow}>
+              <span>Số tiền</span>
+              <strong>{payment.amount.toLocaleString('vi-VN')} ₫</strong>
+            </div>
+            <div className={styles.infoRow}>
+              <span>Nội dung</span>
+              <strong>{payment.description}</strong>
+            </div>
+            <div className={styles.infoRow}>
+              <span>Trạng thái</span>
+              <strong>{payment.status}</strong>
+            </div>
+            
+            {/* Hiển thị thông tin đặt lịch cho Medical Service */}
+            {payment.bookingInfo && (
+              <>
+                <div className={styles.infoRow}>
+                  <span>Dịch vụ</span>
+                  <strong>{payment.bookingInfo.serviceName || 'Dịch vụ y tế'}</strong>
+                </div>
+                <div className={styles.infoRow}>
+                  <span>
+                    <FiCalendar style={{ marginRight: '0.5rem' }} />
+                    Ngày thực hiện
+                  </span>
+                  <strong>{payment.bookingInfo.date}</strong>
+                </div>
+                <div className={styles.infoRow}>
+                  <span>
+                    <FiClock style={{ marginRight: '0.5rem' }} />
+                    Giờ thực hiện
+                  </span>
+                  <strong>{payment.bookingInfo.time}</strong>
+                </div>
+              </>
+            )}
 
             <div className={styles.actions}>
               <button type="button" className={styles.primaryBtn} onClick={goToPayOS}>
@@ -111,12 +160,16 @@ const PaymentCheckoutPage = () => {
         </section>
 
         <section className={styles.hints}>
-          <div className={styles.hint}><FiShield /> Giao dịch sẽ tự cập nhật trạng thái về backend sau khi PayOS callback.</div>
-          <div className={styles.hint}><FiSmartphone /> Nếu bạn bấm hủy trên cổng thanh toán, hệ thống sẽ dẫn về màn hình thất bại.</div>
+          <div className={styles.hint}>
+            <FiShield /> Giao dịch sẽ tự cập nhật trạng thái về backend sau khi PayOS callback.
+          </div>
+          <div className={styles.hint}>
+            <FiSmartphone /> Nếu bạn bấm hủy trên cổng thanh toán, hệ thống sẽ dẫn về màn hình thất bại.
+          </div>
         </section>
 
         <div className={styles.bottomLink}>
-          <Link to="/patient/appointments">Xem danh sách lịch hẹn</Link>
+          <Link to={backLink}>{backLabel}</Link>
         </div>
       </main>
       <Footer />

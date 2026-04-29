@@ -52,6 +52,7 @@ import AdminAuditLogs from './pages/admin/AdminAuditLogs';
 
 import NotFound from './pages/NotFound';
 import MedicalServiceBookingPage from './pages/MedicalServiceBookingPage';
+import ChatbotPage from './pages/chatbot/ChatbotPage';
 
 const App = () => (
   <BrowserRouter>
@@ -65,6 +66,7 @@ const App = () => (
       <Route path="/services/:serviceId/book" element={<MedicalServiceBookingPage />} />
       <Route path="/blog" element={<BlogListPage />} />
       <Route path="/blog/:slug" element={<BlogDetailPage />} />
+      <Route path="/chatbot" element={<ChatbotPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/payment/checkout" element={<PaymentCheckoutPage />} />

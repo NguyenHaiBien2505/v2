@@ -13,12 +13,18 @@ import java.util.UUID;
 
 @Repository
 public interface PatientRepository extends JpaRepository<Patient, UUID> {
+
     Optional<Patient> findByUserId(UUID userId);
+
     Optional<Patient> findByPatientCode(String patientCode);
 
     @Query("SELECT p FROM Patient p WHERE " +
             "(:keyword IS NULL OR LOWER(p.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(p.patientCode) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-            "LOWER(p.phone) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+            "LOWER(p.phone) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(p.patientCode) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     Page<Patient> searchPatients(@Param("keyword") String keyword, Pageable pageable);
+
+    boolean existsByPhone(String phone);
+
+
 }

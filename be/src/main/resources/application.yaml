@@ -7,7 +7,7 @@ spring:
   application:
     name: be
   datasource:
-    url: "jdbc:mysql://localhost:3306/kimquy_v2"
+    url: "jdbc:mysql://localhost:3306/kimquy_v2_2"
     driverClassName: "com.mysql.cj.jdbc.Driver"
     username: root
     password: root
@@ -22,6 +22,21 @@ spring:
   #  sql:
   #    init:
   #      mode: always
+  ai:
+    openai:
+      api-key: ${GEMINI_KEY}
+      chat:
+        base-url: https://generativelanguage.googleapis.com
+        completions-path: /v1beta/openai/chat/completions/
+        #        completions-path: /v1beta/interactions
+        options:
+          #          model: gemini-2.0-flash
+          model: gemini-3-flash-preview
+    chat:
+      memory:
+        repository:
+          jdbc:
+            initialize-schema: always
 
 app:
   cors:
@@ -30,8 +45,8 @@ app:
 
 jwt:
   signerKey: "a9f3c2d8e14b6f7a90cd3b21e8f4a6d5c7b2e9a1f0d4c8b6e3a5f7d9c1b24"
-  valid-duration: 3600 # in second
-  refreshable-duration: 36000 # insecond
+  valid-duration: 36000 # in second
+  refreshable-duration: 360000 # insecond
 
 payos:
   client-id: "e674d2ca-b642-490d-8b8f-25c0054df7b1"

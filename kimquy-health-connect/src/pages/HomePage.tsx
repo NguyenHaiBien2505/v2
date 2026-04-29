@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { FiCalendar, FiPhone, FiMail, FiMapPin, FiClock, FiArrowRight } from 'react-icons/fi';
+import { FiCalendar, FiPhone, FiMail, FiMapPin, FiClock, FiArrowRight, FiMessageCircle } from 'react-icons/fi';
 import { FaStethoscope, FaBaby, FaTooth, FaEye, FaHeartbeat, FaUserMd, FaStar } from 'react-icons/fa';
 import { MdOutlineFace } from 'react-icons/md';
 import { GiNoseSide } from 'react-icons/gi';
@@ -24,9 +24,14 @@ const HomePage = () => {
           Phòng khám Kim Quy – Đội ngũ bác sĩ giàu kinh nghiệm, trang thiết bị hiện đại,
           phục vụ bạn và gia đình.
         </p>
-        <button className={styles.heroCta} onClick={() => navigate('/patient/booking')}>
-          <FiCalendar /> Đặt lịch khám ngay
-        </button>
+        <div className={styles.heroActions}>
+          <button className={styles.heroCta} onClick={() => navigate('/patient/booking')}>
+            <FiCalendar /> Đặt lịch khám ngay
+          </button>
+          <button className={styles.heroSecondaryCta} onClick={() => navigate('/chatbot')}>
+            <FiMessageCircle /> Trò chuyện với AI Chatbot
+          </button>
+        </div>
         <div className={styles.heroStats}>
           <div className={styles.stat}>
             <div className={styles.statNum}>15+</div>

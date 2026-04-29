@@ -1,12 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiCheck, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { FaCheckCircle } from 'react-icons/fa';
 import Header from '../../components/layout/Header';
 import { specialties, doctors, generateTimeSlots } from '../../data/mockData';
-import type { Specialty, Doctor, TimeSlot } from '../../data/mockData';
+import type { Appointment, Specialty, Doctor, TimeSlot } from '../../data/mockData';
 import { useAuthStore } from '../../store/authStore';
-import { createAppointment, createAppointmentPayment } from '../../services/healthApi';
+import { createAppointment, createAppointmentPayment, getDoctorAppointments } from '../../services/healthApi';
 import styles from './BookingPage.module.css';
 
 const stepLabels = ['Chuyên khoa', 'Bác sĩ', 'Ngày khám', 'Giờ khám', 'Thông tin', 'Xác nhận'];
@@ -43,6 +43,34 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
+const getHttpStatus = (error: unknown): number | null => {
+  if (!error || typeof error !== 'object') return null;
+  const err = error as { response?: { status?: unknown } };
+  return typeof err.response?.status === 'number' ? err.response.status : null;
+};
+
+const isAppointmentConflict = (error: unknown): boolean => {
+  const status = getHttpStatus(error);
+  if (status === 409) return true;
+
+  const message = getErrorMessage(error, '').toLowerCase();
+  return (
+    message.includes('conflict')
+    || message.includes('slot')
+    || message.includes('trung')
+    || message.includes('da co lich')
+    || message.includes('đã có lịch')
+  );
+};
+
+const isAccessDeniedError = (error: unknown): boolean => {
+  const status = getHttpStatus(error);
+  if (status === 401 || status === 403) return true;
+
+  const message = getErrorMessage(error, '').toLowerCase();
+  return message.includes('access denied') || message.includes('forbidden') || message.includes('khong co quyen');
+};
+
 const BookingPage = () => {
   const navigate = useNavigate();
   const profile = useAuthStore((s) => s.profile) as { id?: string } | null;
@@ -55,6 +83,8 @@ const BookingPage = () => {
   const [notes, setNotes] = useState('');
   const [bookingFinished, setBookingFinished] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [doctorAppointments, setDoctorAppointments] = useState<Appointment[]>([]);
+  const [loadingDoctorSchedule, setLoadingDoctorSchedule] = useState(false);
 
   // Lọc bác sĩ theo chuyên khoa
   const filteredDocs = useMemo(() => {
@@ -83,7 +113,63 @@ const BookingPage = () => {
     return days;
   }, [calMonth]);
 
-  const slots = useMemo(() => generateTimeSlots(selectedDate), [selectedDate]);
+  const activeDoctor = useMemo(() => selectedDoc || filteredDocs[0] || null, [selectedDoc, filteredDocs]);
+
+  useEffect(() => {
+    if (!activeDoctor) {
+      setDoctorAppointments([]);
+      return;
+    }
+
+    let ignore = false;
+    setLoadingDoctorSchedule(true);
+
+    getDoctorAppointments(String(activeDoctor.id))
+      .then((appointments) => {
+        if (ignore) return;
+        setDoctorAppointments(appointments);
+      })
+      .catch((error) => {
+        if (ignore) return;
+        // Backend may restrict this endpoint for PATIENT role.
+        if (!isAccessDeniedError(error)) {
+          console.error(error);
+        }
+        setDoctorAppointments([]);
+      })
+      .finally(() => {
+        if (ignore) return;
+        setLoadingDoctorSchedule(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [activeDoctor?.id]);
+
+  const occupiedTimeSet = useMemo(() => {
+    if (!selectedDate) return new Set<string>();
+
+    return new Set(
+      doctorAppointments
+        .filter((appt) => appt.appointmentDate === selectedDate && appt.status !== 'CANCELLED')
+        .map((appt) => appt.startTime.slice(0, 5))
+    );
+  }, [doctorAppointments, selectedDate]);
+
+  const slots = useMemo(() => {
+    return generateTimeSlots(selectedDate).map((slot) => ({
+      ...slot,
+      available: !occupiedTimeSet.has(slot.time),
+    }));
+  }, [occupiedTimeSet, selectedDate]);
+
+  useEffect(() => {
+    if (!selectedSlot) return;
+    if (occupiedTimeSet.has(selectedSlot.time)) {
+      setSelectedSlot(null);
+    }
+  }, [occupiedTimeSet, selectedSlot]);
 
   const canNext = () => {
     switch (step) {
@@ -108,6 +194,28 @@ const BookingPage = () => {
       setSubmitting(true);
       let createdAppointmentId: number | null = null;
       try {
+        try {
+          const latestDoctorAppointments = await getDoctorAppointments(String(doctor.id));
+          const isOccupied = latestDoctorAppointments.some(
+            (appt) => appt.appointmentDate === selectedDate
+              && appt.status !== 'CANCELLED'
+              && appt.startTime.slice(0, 5) === selectedSlot.time
+          );
+
+          if (isOccupied) {
+            setDoctorAppointments(latestDoctorAppointments);
+            setSelectedSlot(null);
+            setStep(3);
+            alert('Appointment time conflict: Khung giờ này vừa được đặt. Vui lòng chọn giờ khác.');
+            return;
+          }
+        } catch (error) {
+          // If schedule endpoint is forbidden for this role, skip pre-check and rely on create API result.
+          if (!isAccessDeniedError(error)) {
+            throw error;
+          }
+        }
+
         const appointment = await createAppointment(profile.id, String(doctor.id), {
           appointmentDate: selectedDate,
           startTime: `${selectedSlot.time}:00`,
@@ -129,6 +237,15 @@ const BookingPage = () => {
         navigate('/payment/checkout');
       } catch (error) {
         console.error(error);
+        if (!createdAppointmentId && isAppointmentConflict(error)) {
+          const refreshedAppointments = await getDoctorAppointments(String(doctor.id)).catch(() => []);
+          setDoctorAppointments(refreshedAppointments);
+          setSelectedSlot(null);
+          setStep(3);
+          alert('Appointment time conflict: Khung giờ đã có bệnh nhân khác đặt trước. Vui lòng chọn giờ khác.');
+          return;
+        }
+
         const message = getErrorMessage(error, 'Không thể khởi tạo thanh toán. Vui lòng thử lại.');
         if (createdAppointmentId) {
           alert(`Đặt lịch thành công nhưng tạo thanh toán thất bại: ${message}`);
@@ -263,7 +380,11 @@ const BookingPage = () => {
                       <div
                         key={i}
                         className={`${styles.calDay} ${d.disabled ? styles.calDayDisabled : ''} ${selectedDate === dateStr ? styles.calDaySelected : ''} ${isToday ? styles.calDayToday : ''}`}
-                        onClick={() => !d.disabled && setSelectedDate(dateStr)}
+                        onClick={() => {
+                          if (d.disabled) return;
+                          setSelectedDate(dateStr);
+                          setSelectedSlot(null);
+                        }}
                       >
                         {d.day}
                       </div>
@@ -277,12 +398,24 @@ const BookingPage = () => {
             {step === 3 && (
               <>
                 <h2 className={styles.cardTitle}>Chọn giờ khám – {selectedDate}</h2>
+                <div className={styles.slotLegend}>
+                  <span className={styles.legendItem}>
+                    <span className={`${styles.legendSwatch} ${styles.legendAvailable}`} />
+                    Còn trống
+                  </span>
+                  <span className={styles.legendItem}>
+                    <span className={`${styles.legendSwatch} ${styles.legendBooked}`} />
+                    Bác sĩ đã có lịch
+                  </span>
+                  {loadingDoctorSchedule && <span className={styles.legendHint}>Đang tải lịch bác sĩ...</span>}
+                </div>
                 <div className={styles.slotsGrid}>
                   {slots.map((s) => (
                     <div
                       key={s.time}
-                      className={`${styles.slot} ${!s.available ? styles.slotBooked : ''} ${selectedSlot?.time === s.time ? styles.slotSelected : ''}`}
+                      className={`${styles.slot} ${s.available ? styles.slotAvailable : styles.slotBooked} ${selectedSlot?.time === s.time ? styles.slotSelected : ''}`}
                       onClick={() => s.available && setSelectedSlot(s)}
+                      aria-disabled={!s.available}
                     >
                       {s.time}
                     </div>

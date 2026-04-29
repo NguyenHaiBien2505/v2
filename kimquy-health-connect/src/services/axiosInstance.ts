@@ -5,7 +5,7 @@ import axios from 'axios';
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v2',
-  timeout: 15000,
+  timeout: 60000, // 60s — AI responses can be slow
   headers: { 'Content-Type': 'application/json' },
 });
 

@@ -31,6 +31,7 @@ const Header = () => {
     { path: '/doctors', label: 'Bác sĩ' },
     { path: '/services', label: 'Dịch vụ' },
     { path: '/blog', label: 'Tin tức' },
+    { path: '/chatbot', label: 'AI Chatbot' },
   ];
 
   const getDashboardPath = () => {

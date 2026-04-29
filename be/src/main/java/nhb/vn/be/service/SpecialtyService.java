@@ -28,7 +28,7 @@ public class SpecialtyService {
     SpecialtyMapper specialtyMapper;
 
     public SpecialtyResponse createSpecialty(SpecialtyRequest request) {
-        if (specialtyRepository.existsByName(request.getName())) {
+        if (specialtyRepository.existsByName((request.getName()))) {
             throw new AppException(ErrorCode.DATA_INTEGRITY_VIOLATION, "Specialty name already exists");
         }
 

@@ -1,6 +1,5 @@
 package nhb.vn.be.repository;
 
-
 import nhb.vn.be.entity.Appointment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,8 +16,15 @@ import java.util.UUID;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
+
     Page<Appointment> findByPatientId(UUID patientId, Pageable pageable);
     Page<Appointment> findByDoctorId(UUID doctorId, Pageable pageable);
+
+    // Lấy tất cả appointment của patient (không phân trang)
+    List<Appointment> findByPatientId(UUID patientId);
+
+    // Lấy appointment theo ID (trả về Optional)
+    Optional<Appointment> findById(Long id);
 
     @Query("SELECT a FROM Appointment a WHERE a.doctor.id = :doctorId AND a.appointmentDate = :date")
     List<Appointment> findDoctorAppointmentsByDate(@Param("doctorId") UUID doctorId,
@@ -28,10 +34,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     int countBookedAppointments(@Param("scheduleId") Long scheduleId);
 
     Optional<Appointment> findByPatientIdAndDoctorIdAndAppointmentDateAndStartTime(
-            UUID patientId, UUID doctorId, LocalDate date, java.time.LocalTime startTime);
+            UUID patientId, UUID doctorId, LocalDate date, LocalTime startTime);
 
     @Query("SELECT a FROM Appointment a WHERE a.patient.id = :patientId AND a.status IN ('PENDING', 'CONFIRMED')")
     List<Appointment> findActiveAppointmentsByPatient(@Param("patientId") UUID patientId);
+
+    // Lấy appointment sắp tới của patient
+    @Query("SELECT a FROM Appointment a WHERE a.patient.id = :patientId AND a.status IN ('PENDING', 'CONFIRMED') AND a.appointmentDate >= CURRENT_DATE ORDER BY a.appointmentDate ASC")
+    List<Appointment> findUpcomingAppointmentsByPatient(@Param("patientId") UUID patientId);
 
     @Query("""
             SELECT COUNT(a) > 0

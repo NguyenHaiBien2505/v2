@@ -25,6 +25,7 @@ import nhb.vn.be.repository.ScheduleRepository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -143,5 +144,25 @@ public class AppointmentService {
                 .first(page.isFirst())
                 .last(page.isLast())
                 .build();
+    }
+
+
+    // Thêm vào AppointmentService.java
+
+    public List<Appointment> getPatientAppointmentsList(UUID patientId) {
+        return appointmentRepository.findByPatientId(patientId);
+    }
+
+    public int countBookedAppointments(Long scheduleId) {
+        return appointmentRepository.countBookedAppointments(scheduleId);
+    }
+
+    public Appointment getAppointmentEntity(Long id) {
+        return appointmentRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_EXISTED));
+    }
+
+    public List<Appointment> getUpcomingAppointmentsByPatient(UUID patientId) {
+        return appointmentRepository.findUpcomingAppointmentsByPatient(patientId);
     }
 }
