@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { FiCheck, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { FaCheckCircle } from 'react-icons/fa';
 import Header from '../../components/layout/Header';
@@ -7,12 +7,28 @@ import { specialties, doctors, generateTimeSlots } from '../../data/mockData';
 import type { Appointment, Specialty, Doctor, TimeSlot } from '../../data/mockData';
 import { useAuthStore } from '../../store/authStore';
 import { createAppointment, createAppointmentPayment, getDoctorAppointments } from '../../services/healthApi';
+import NotificationDialog from '../../components/NotificationDialog';
+import { useNotification } from '../../hooks/useNotification';
 import styles from './BookingPage.module.css';
 
 const stepLabels = ['Chuyên khoa', 'Bác sĩ', 'Ngày khám', 'Giờ khám', 'Thông tin', 'Xác nhận'];
 
+const translateError = (msg: string): string => {
+  const m = msg.toLowerCase();
+  if (m.includes('schedule not existed')) return 'Lịch làm việc của bác sĩ không tồn tại hoặc chưa được thiết lập.';
+  if (m.includes('appointment time conflict')) return 'Khung giờ này đã có người đặt hoặc trùng lịch.';
+  if (m.includes('schedule is full')) return 'Lịch khám của bác sĩ đã kín chỗ.';
+  if (m.includes('doctor not existed')) return 'Không tìm thấy thông tin bác sĩ.';
+  if (m.includes('patient not existed')) return 'Không tìm thấy thông tin bệnh nhân.';
+  if (m.includes('unauthenticated')) return 'Vui lòng đăng nhập để tiếp tục.';
+  if (m.includes('unauthorized')) return 'Bạn không có quyền thực hiện thao tác này.';
+  if (m.includes('invalid request')) return 'Yêu cầu không hợp lệ.';
+  if (m.includes('data integrity violation')) return 'Lỗi dữ liệu hệ thống (ví dụ: trùng lặp dữ liệu).';
+  return msg;
+};
+
 const getErrorMessage = (error: unknown, fallback: string): string => {
-  if (!error || typeof error !== 'object') return fallback;
+  if (!error || typeof error !== 'object') return translateError(fallback);
 
   const err = error as {
     message?: string;
@@ -21,26 +37,23 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
     };
   };
 
+  let extractedMessage = fallback;
+
   const payload = err.response?.data;
   if (typeof payload === 'string' && payload.trim()) {
-    return payload;
-  }
-
-  if (payload && typeof payload === 'object') {
+    extractedMessage = payload;
+  } else if (payload && typeof payload === 'object') {
     const data = payload as { message?: unknown; error?: unknown };
     if (typeof data.message === 'string' && data.message.trim()) {
-      return data.message;
+      extractedMessage = data.message;
+    } else if (typeof data.error === 'string' && data.error.trim()) {
+      extractedMessage = data.error;
     }
-    if (typeof data.error === 'string' && data.error.trim()) {
-      return data.error;
-    }
+  } else if (typeof err.message === 'string' && err.message.trim()) {
+    extractedMessage = err.message;
   }
 
-  if (typeof err.message === 'string' && err.message.trim()) {
-    return err.message;
-  }
-
-  return fallback;
+  return translateError(extractedMessage);
 };
 
 const getHttpStatus = (error: unknown): number | null => {
@@ -73,7 +86,9 @@ const isAccessDeniedError = (error: unknown): boolean => {
 
 const BookingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const profile = useAuthStore((s) => s.profile) as { id?: string } | null;
+  const { notification, showError, closeNotification } = useNotification();
   const [step, setStep] = useState(0);
   const [selectedSpec, setSelectedSpec] = useState<Specialty | null>(null);
   const [selectedDoc, setSelectedDoc] = useState<Doctor | null>(null);
@@ -85,6 +100,19 @@ const BookingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [doctorAppointments, setDoctorAppointments] = useState<Appointment[]>([]);
   const [loadingDoctorSchedule, setLoadingDoctorSchedule] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const doctorId = params.get('doctorId');
+    if (doctorId) {
+      const doc = doctors.find((d) => String(d.id) === doctorId);
+      if (doc) {
+        setSelectedSpec(doc.specialty);
+        setSelectedDoc(doc);
+        setStep(2);
+      }
+    }
+  }, [location.search]);
 
   // Lọc bác sĩ theo chuyên khoa
   const filteredDocs = useMemo(() => {
@@ -185,8 +213,9 @@ const BookingPage = () => {
   const handleNext = async () => {
     if (step === 5) {
       if (!profile?.id || !selectedDate || !selectedSlot) {
-        alert('Vui lòng đăng nhập và chọn đầy đủ ngày giờ khám trước khi thanh toán.');
-        if (!profile?.id) navigate('/login');
+        showError('Thông báo', 'Vui lòng đăng nhập và chọn đầy đủ ngày giờ khám trước khi thanh toán.', () => {
+          if (!profile?.id) navigate('/login');
+        });
         return;
       }
       const doctor = selectedDoc || filteredDocs[0];
@@ -206,7 +235,7 @@ const BookingPage = () => {
             setDoctorAppointments(latestDoctorAppointments);
             setSelectedSlot(null);
             setStep(3);
-            alert('Appointment time conflict: Khung giờ này vừa được đặt. Vui lòng chọn giờ khác.');
+            showError('Lỗi đặt lịch', 'Khung giờ này vừa được đặt. Vui lòng chọn giờ khác.');
             return;
           }
         } catch (error) {
@@ -242,16 +271,17 @@ const BookingPage = () => {
           setDoctorAppointments(refreshedAppointments);
           setSelectedSlot(null);
           setStep(3);
-          alert('Appointment time conflict: Khung giờ đã có bệnh nhân khác đặt trước. Vui lòng chọn giờ khác.');
+          showError('Lỗi đặt lịch', 'Khung giờ đã có bệnh nhân khác đặt trước. Vui lòng chọn giờ khác.');
           return;
         }
 
         const message = getErrorMessage(error, 'Không thể khởi tạo thanh toán. Vui lòng thử lại.');
         if (createdAppointmentId) {
-          alert(`Đặt lịch thành công nhưng tạo thanh toán thất bại: ${message}`);
-          navigate(`/patient/appointments/${createdAppointmentId}`);
+          showError('Cảnh báo', `Đặt lịch thành công nhưng tạo thanh toán thất bại: ${message}`, () => {
+            navigate(`/patient/appointments/${createdAppointmentId}`);
+          });
         } else {
-          alert(message);
+          showError('Lỗi đặt lịch', message);
         }
       } finally {
         setSubmitting(false);
@@ -486,6 +516,7 @@ const BookingPage = () => {
           </div>
         </div>
       </div>
+      <NotificationDialog {...notification} onClose={closeNotification} />
     </div>
   );
 };

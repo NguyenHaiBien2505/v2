@@ -37,6 +37,12 @@ const DoctorDashboard = () => {
   }, [profile?.id]);
 
   const today = appointments.filter(a => a.status === 'CONFIRMED');
+  const sortedAppointments = [...appointments].sort((a, b) => {
+    const strA = `${a.appointmentDate}T${a.startTime || '00:00'}`;
+    const strB = `${b.appointmentDate}T${b.startTime || '00:00'}`;
+    return strB.localeCompare(strA);
+  });
+
   return (
     <DashboardLayout sections={doctorSidebar}>
       <h1 className={styles.pageTitle}>Dashboard Bác sĩ</h1>
@@ -55,13 +61,14 @@ const DoctorDashboard = () => {
         </div>
       </div>
       <div className={styles.tableCard}>
-        <h2 className={styles.tableTitle}>Bệnh nhân hôm nay</h2>
+        <h2 className={styles.tableTitle}>Lịch hẹn gần nhất</h2>
         <table className={styles.table}>
-          <thead><tr><th>Bệnh nhân</th><th>Giờ</th><th>Lý do</th><th>Trạng thái</th><th></th></tr></thead>
+          <thead><tr><th>Bệnh nhân</th><th>Ngày</th><th>Giờ</th><th>Lý do</th><th>Trạng thái</th><th></th></tr></thead>
           <tbody>
-            {appointments.map(a => (
+            {sortedAppointments.slice(0, 10).map(a => (
               <tr key={a.id}>
-                <td>Bệnh nhân #{a.patientId}</td>
+                <td>{a.patientName || `Bệnh nhân #${a.patientId}`}</td>
+                <td>{a.appointmentDate}</td>
                 <td>{a.startTime}</td>
                 <td>{a.reason}</td>
                 <td><span className={`status-badge status-badge--${a.status.toLowerCase()}`}>{a.status}</span></td>

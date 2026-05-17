@@ -46,7 +46,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/doctors/{doctorId}")
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'PATIENT')")
     public APIResponse<PageResponse<AppointmentResponse>> getDoctorAppointments(
             @PathVariable UUID doctorId,
             @PageableDefault(size = 10, sort = "appointmentDate", direction = Sort.Direction.ASC) Pageable pageable) {
@@ -79,6 +79,20 @@ public class AppointmentController {
         appointmentService.cancelAppointment(id);
         return APIResponse.<Void>builder()
                 .message("Appointment cancelled successfully")
+                .build();
+    }
+
+    /**
+     * Admin: lấy toàn bộ lịch hẹn trong 1 request (tránh N+1 ở frontend).
+     * GET /appointments/admin/all?page=0&size=500
+     */
+    @GetMapping("/admin/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public APIResponse<PageResponse<AppointmentResponse>> getAllAppointments(
+            @PageableDefault(size = 500, sort = "appointmentDate",
+                    direction = Sort.Direction.DESC) Pageable pageable) {
+        return APIResponse.<PageResponse<AppointmentResponse>>builder()
+                .result(appointmentService.getAllAppointments(pageable))
                 .build();
     }
 }

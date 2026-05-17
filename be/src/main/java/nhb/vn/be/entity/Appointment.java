@@ -56,4 +56,7 @@ public class Appointment {
 
     @OneToOne(mappedBy = "appointment")
     Prescription prescription;
+
+    @Column(length = 20)
+    String paymentStatus; // UNPAID | PAID
 }

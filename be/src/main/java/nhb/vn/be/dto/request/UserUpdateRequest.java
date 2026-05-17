@@ -12,6 +12,7 @@ import java.util.Set;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class UserUpdateRequest {
     String password;
+    String email;
     String avatarUrl;
     String status;
     Set<String> roles;

@@ -27,7 +27,7 @@ import java.util.Arrays;
 @EnableMethodSecurity
 public class SecurityConfig {
     private static final String[] PUBLIC_ENDPOINT =
-            {"/users", "/auth/token-login", "/auth/introspect", "/auth/logout", "/auth/refresh"};
+            {"/users", "/auth/token-login", "/auth/introspect", "/auth/logout", "/auth/refresh", "/upload/avatar"};
 
     private static final String[] PUBLIC_CHAT_ENDPOINTS = {
             "/chat/**",
@@ -40,7 +40,8 @@ public class SecurityConfig {
             "/specialties/**",
             "/medical-services/**",
             "/news/**",
-            "/banners/**"
+            "/banners/**",
+            "/avatars/**"
     };
 
     private CustomJwtDecoder customJwtDecoder;
@@ -63,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, PUBLIC_GET_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.PUT, "/users/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/payment/webhook").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/payment/**").permitAll()
                         //.requestMatchers(HttpMethod.GET, "/users").hasRole("ADMIN")
                         // .requestMatchers(HttpMethod.GET, "/users").hasAuthority("ROLE_ADMIN")
                         .anyRequest().authenticated());

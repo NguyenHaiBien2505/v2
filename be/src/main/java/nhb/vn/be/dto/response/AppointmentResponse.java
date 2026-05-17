@@ -22,6 +22,7 @@ public class AppointmentResponse {
     String notes;
     Integer queueNumber;
     String appointmentType;
+    String paymentStatus;
 
     UUID patientId;
     String patientName;

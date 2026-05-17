@@ -1,5 +1,6 @@
 package nhb.vn.be.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -15,6 +16,9 @@ public class PatientCreationRequest {
     @NotBlank(message = "FULLNAME_REQUIRED")
     String fullName;
 
+    @Email(message = "EMAIL_INVALID")
+    String email;
+
     String phone;
     String address;
     String gender;
@@ -27,4 +31,5 @@ public class PatientCreationRequest {
     String username;
 
     String password;
+    String avatarUrl;
 }

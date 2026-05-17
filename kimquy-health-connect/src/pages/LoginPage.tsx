@@ -27,7 +27,7 @@ const LoginPage = () => {
       const user = useAuthStore.getState().user;
       if (user?.role === 'DOCTOR') navigate('/doctor/dashboard');
       else if (user?.role === 'ADMIN') navigate('/admin/dashboard');
-      else navigate('/patient/dashboard');
+      else navigate('/');
     } else {
       if (lastLoginError === 'INVALID_CREDENTIALS') {
         setError('Tên đăng nhập hoặc mật khẩu không đúng.');

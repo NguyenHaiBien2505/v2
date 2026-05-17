@@ -60,7 +60,7 @@ const AdminAppointments = () => {
       <div className={styles.tableCard}>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
-            <thead><tr><th>Mã</th><th>BN</th><th>STT</th><th>Bác sĩ</th><th>Loại</th><th>Dịch vụ</th><th>Ngày giờ</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+            <thead><tr><th>Mã</th><th>BN</th><th>STT</th><th>Bác sĩ</th><th>Loại</th><th>Dịch vụ</th><th>Ngày giờ</th><th>Trạng thái</th><th>Thanh toán</th><th>Thao tác</th></tr></thead>
             <tbody>
               {filtered.map(a => (
                 <tr key={a.id}>
@@ -72,6 +72,13 @@ const AdminAppointments = () => {
                   <td>{a.serviceName}</td>
                   <td>{a.appointmentDate}<br /><small>{a.startTime} - {a.endTime}</small></td>
                   <td><span className={`${styles.statusBadge} ${styles['status' + a.status.charAt(0) + a.status.slice(1).toLowerCase()]}`}>{a.status}</span></td>
+                  <td>
+                    {a.paymentStatus === 'PAID' ? (
+                      <span style={{ fontSize: 12, padding: '4px 8px', borderRadius: 12, background: '#d1fae5', color: '#065f46' }}>Đã thanh toán</span>
+                    ) : (
+                      <span style={{ fontSize: 12, padding: '4px 8px', borderRadius: 12, background: '#f3f4f6', color: '#374151' }}>Chưa thanh toán</span>
+                    )}
+                  </td>
                   <td>
                     <div className={styles.actions}>
                       <button className={styles.btnIcon} onClick={() => setView(a)}><FiEye /></button>
@@ -109,6 +116,9 @@ const AdminAppointments = () => {
               {view.notes && <p><strong>Ghi chú:</strong> {view.notes}</p>}
               <p><strong>Trạng thái:</strong> <span className={`${styles.statusBadge} ${styles['status' + view.status.charAt(0) + view.status.slice(1).toLowerCase()]}`}>{view.status}</span></p>
             </div>
+              <div className={styles.modalBody}>
+                <p><strong>Trạng thái thanh toán:</strong> {view.paymentStatus === 'PAID' ? <span style={{ color: '#065f46' }}>Đã thanh toán</span> : <span style={{ color: '#374151' }}>Chưa thanh toán</span>}</p>
+              </div>
             <div className={styles.modalFooter}>
               <button className={styles.btnSecondary} onClick={() => setView(null)}>Đóng</button>
             </div>

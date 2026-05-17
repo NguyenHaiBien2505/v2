@@ -1,5 +1,6 @@
 package nhb.vn.be.dto.request;
 
+import jakarta.validation.constraints.Email;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -19,5 +20,9 @@ public class DoctorUpdateRequest {
     BigDecimal clinicFee;
     String licenseNumber;
     String phone;
+
+    @Email(message = "EMAIL_INVALID")
+    String email;
+
     Long specialtyId;
 }

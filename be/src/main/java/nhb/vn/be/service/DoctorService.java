@@ -45,7 +45,9 @@ public class DoctorService {
         // Create user account
         User user = User.builder()
                 .username(request.getUsername())
+                .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
+                .avatarUrl(request.getAvatarUrl())
                 .status("ACTIVE")
                 .build();
 
@@ -114,6 +116,23 @@ public class DoctorService {
             Specialty specialty = specialtyRepository.findById(request.getSpecialtyId())
                     .orElseThrow(() -> new AppException(ErrorCode.SPECIALTY_NOT_EXISTED));
             doctor.setSpecialty(specialty);
+        }
+
+        // Update email and avatar on the linked user account
+        if (doctor.getUser() != null) {
+            User linkedUser = doctor.getUser();
+            boolean changed = false;
+            if (request.getEmail() != null) {
+                linkedUser.setEmail(request.getEmail());
+                changed = true;
+            }
+            if (request.getAvatarUrl() != null) {
+                linkedUser.setAvatarUrl(request.getAvatarUrl());
+                changed = true;
+            }
+            if (changed) {
+                userRepository.save(linkedUser);
+            }
         }
 
         doctor = doctorRepository.save(doctor);

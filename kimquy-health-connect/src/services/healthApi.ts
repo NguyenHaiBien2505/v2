@@ -75,6 +75,7 @@ const getApiErrorMessage = (error: unknown, fallback: string): string => {
 export type AdminUserRow = {
   id: string;
   username: string;
+  email: string;
   avatarUrl: string;
   role: 'PATIENT' | 'DOCTOR' | 'ADMIN';
   roles: string[];
@@ -86,6 +87,7 @@ export type AdminDoctorRow = {
   id: string;
   fullName: string;
   username: string;
+  email: string;
   degree: string;
   avatarUrl: string;
   bio: string;
@@ -147,6 +149,7 @@ type AppointmentApi = {
   startTime: string;
   endTime: string;
   status: string;
+  paymentStatus?: string;
   reason?: string;
   notes?: string;
   queueNumber?: number;
@@ -203,6 +206,7 @@ type PaymentApi = {
 type AdminUserApi = {
   id: string;
   username: string;
+  email?: string;
   avatarUrl?: string;
   status?: 'ACTIVE' | 'INACTIVE';
   createdAt?: string;
@@ -222,6 +226,7 @@ type AdminDoctorApi = {
   user?: {
     id?: string;
     username?: string;
+    email?: string;
     avatarUrl?: string;
   };
   specialty?: {
@@ -290,6 +295,7 @@ const mapAdminUser = (u: AdminUserApi): AdminUserRow => {
   return {
     id: u.id,
     username: u.username ?? '',
+    email: u.email ?? '',
     avatarUrl: u.avatarUrl ?? '',
     role,
     roles: roleNames,
@@ -302,6 +308,7 @@ const mapAdminDoctor = (d: AdminDoctorApi): AdminDoctorRow => ({
   id: d.id,
   fullName: d.fullName ?? '',
   username: d.user?.username ?? '',
+  email: d.user?.email ?? '',
   degree: d.degree ?? '',
   avatarUrl: d.avatarUrl ?? d.user?.avatarUrl ?? '',
   bio: d.bio ?? '',
@@ -350,6 +357,7 @@ const mapAppointment = (a: AppointmentApi): Appointment => ({
   id: a.id,
   patientId: a.patientId,
   patientCode: a.patientName,
+  patientName: a.patientName,
   doctorId: a.doctorId,
   doctorName: a.doctorName ?? 'Bac si',
   doctorAvatar: a.doctorAvatar ?? '',
@@ -359,6 +367,7 @@ const mapAppointment = (a: AppointmentApi): Appointment => ({
   startTime: a.startTime?.slice(0, 5) ?? '',
   endTime: a.endTime?.slice(0, 5) ?? '',
   status: (a.status as Appointment['status']) ?? 'PENDING',
+  paymentStatus: (a.paymentStatus as Appointment['paymentStatus']) ?? 'UNPAID',
   reason: a.reason ?? '',
   notes: a.notes,
   queueNumber: a.queueNumber,
@@ -439,6 +448,49 @@ export const getPatientAppointments = async (patientId: string): Promise<Appoint
 export const getDoctorAppointments = async (doctorId: string): Promise<Appointment[]> => {
   const { data } = await axiosInstance.get<ApiResponse<PageResponse<AppointmentApi>>>(`/appointments/doctors/${doctorId}?size=200`);
   return (data.result?.content ?? []).map(mapAppointment);
+};
+
+// ================================================================
+// SCHEDULE APIs
+// ================================================================
+
+export type ScheduleRequestApi = {
+  workDate: string; // YYYY-MM-DD
+  startTime: string; // HH:mm[:ss]
+  endTime: string; // HH:mm[:ss]
+  maxPatient: number;
+  status?: string;
+};
+
+export const createDoctorSchedule = async (doctorId: string, payload: ScheduleRequestApi) => {
+  const { data } = await axiosInstance.post<ApiResponse<unknown>>(`/schedules/doctors/${doctorId}`, payload);
+  return unwrapResult(data) as unknown;
+};
+
+export type ScheduleResponseApi = {
+  id: number;
+  workDate: string;
+  startTime: string;
+  endTime: string;
+  maxPatient: number;
+  bookedCount?: number;
+  status: string;
+  doctorId: string;
+  doctorName?: string;
+};
+
+export const getDoctorSchedulesApi = async (doctorId: string, page = 0, size = 50): Promise<PageResponse<ScheduleResponseApi>> => {
+  const { data } = await axiosInstance.get<ApiResponse<PageResponse<ScheduleResponseApi>>>(`/schedules/doctors/${doctorId}?page=${page}&size=${size}`);
+  return unwrapResult<PageResponse<ScheduleResponseApi>>(data);
+};
+
+export const updateScheduleApi = async (id: number, payload: ScheduleRequestApi) => {
+  const { data } = await axiosInstance.put<ApiResponse<unknown>>(`/schedules/${id}`, payload);
+  return unwrapResult(data) as unknown;
+};
+
+export const deleteScheduleApi = async (id: number) => {
+  await axiosInstance.delete(`/schedules/${id}`);
 };
 
 export const getAppointment = async (id: number): Promise<Appointment> => {
@@ -617,29 +669,16 @@ export const deleteReview = async (id: number): Promise<void> => {
 // ADMIN APIs
 // ================================================================
 
+/**
+ * Admin: lấy TẤT CẢ lịch hẹn trong 1 request duy nhất.
+ * Trước đây dùng N+1 (1 request/doctor) → gây ERR_INSUFFICIENT_RESOURCES.
+ * Giờ dùng endpoint /appointments/admin/all trả về 1 lần.
+ */
 export const getAdminAppointmentsAggregate = async (): Promise<Appointment[]> => {
-  const doctorsResp = await axiosInstance.get<ApiResponse<PageResponse<{ id: string }>>>(`/doctors?page=0&size=200`);
-  const doctorIds = (doctorsResp.data.result?.content ?? []).map((d) => d.id);
-  const responses = await Promise.all(
-    doctorIds.map((doctorId) =>
-      axiosInstance
-        .get<ApiResponse<PageResponse<AppointmentApi>>>(`/appointments/doctors/${doctorId}?size=200`)
-        .then((res) => res.data.result?.content ?? [])
-        .catch(() => [])
-    )
+  const { data } = await axiosInstance.get<ApiResponse<PageResponse<AppointmentApi>>>(
+    '/appointments/admin/all?size=500'
   );
-
-  const merged = responses.flat().map(mapAppointment);
-  const byId = new Map<number, Appointment>();
-  merged.forEach((item) => {
-    byId.set(item.id, item);
-  });
-
-  return Array.from(byId.values()).sort((a, b) => {
-    const ad = `${a.appointmentDate}T${a.startTime}`;
-    const bd = `${b.appointmentDate}T${b.startTime}`;
-    return bd.localeCompare(ad);
-  });
+  return (data.result?.content ?? []).map(mapAppointment);
 };
 
 export const getAdminUsers = async (): Promise<AdminUserRow[]> => {
@@ -649,6 +688,7 @@ export const getAdminUsers = async (): Promise<AdminUserRow[]> => {
 
 export const createAdminUser = async (payload: {
   username: string;
+  email?: string;
   password: string;
   avatarUrl?: string;
   roles?: string[];
@@ -660,6 +700,7 @@ export const createAdminUser = async (payload: {
 export const updateAdminUser = async (
   id: string,
   payload: {
+    email?: string;
     password?: string;
     avatarUrl?: string;
     status?: 'ACTIVE' | 'INACTIVE';
@@ -682,6 +723,7 @@ export const getAdminDoctors = async (): Promise<AdminDoctorRow[]> => {
 export const createAdminDoctor = async (payload: {
   fullName: string;
   username: string;
+  email?: string;
   password: string;
   degree: string;
   avatarUrl?: string;
@@ -700,6 +742,7 @@ export const updateAdminDoctor = async (
   id: string,
   payload: {
     fullName: string;
+    email?: string;
     degree: string;
     avatarUrl?: string;
     bio: string;
@@ -784,7 +827,6 @@ export const createAdminNews = async (payload: {
     image: payload.thumbnailUrl,
     category: payload.category,
     author: payload.authorName,
-    publishedAt: payload.publishedAt,
     featured: payload.featured,
   });
   return mapNews(data.result);
@@ -810,7 +852,6 @@ export const updateAdminNews = async (
     image: payload.thumbnailUrl,
     category: payload.category,
     author: payload.authorName,
-    publishedAt: payload.publishedAt,
     featured: payload.featured,
   });
   return mapNews(data.result);
@@ -841,4 +882,73 @@ export const updateSpecialty = async (id: number, payload: { name: string; icon?
 
 export const deleteSpecialty = async (id: number): Promise<void> => {
   await axiosInstance.delete(`/specialties/${id}`);
+};
+
+// ================================================================
+// REVENUE APIs  (doanh thu thực từ bảng Payment)
+// ================================================================
+
+export type RevenuePoint = {
+  period: number;   // tháng (1-12) | tuần (1-53) | năm (2024…)
+  revenue: number;  // VNĐ
+  count: number;    // số giao dịch
+};
+
+export type RevenueReport = {
+  totalRevenue: number;
+  totalTransactions: number;
+  data: RevenuePoint[];
+  year: number | null;
+  mode: 'WEEK' | 'MONTH' | 'YEAR';
+};
+
+/** Doanh thu theo tháng trong năm chỉ định */
+export const getRevenueMonthly = async (year: number): Promise<RevenueReport> => {
+  const { data } = await axiosInstance.get<ApiResponse<RevenueReport>>(
+    `/revenue/monthly?year=${year}`
+  );
+  return data.result;
+};
+
+/** Doanh thu theo tuần ISO trong năm chỉ định */
+/** Doanh thu theo tuần ISO trong năm chỉ định */
+export const getRevenueWeekly = async (year: number, month?: number): Promise<RevenueReport> => {
+  const url = month ? `/revenue/weekly?year=${year}&month=${month}` : `/revenue/weekly?year=${year}`;
+  const { data } = await axiosInstance.get<ApiResponse<RevenueReport>>(url);
+  return data.result;
+};
+
+/** Doanh thu theo ngày trong tháng chỉ định */
+export const getRevenueDaily = async (year: number, month?: number): Promise<RevenueReport> => {
+  const url = month ? `/revenue/daily?year=${year}&month=${month}` : `/revenue/daily?year=${year}`;
+  const { data } = await axiosInstance.get<ApiResponse<RevenueReport>>(url);
+  return data.result;
+};
+
+/** Doanh thu theo từng năm (toàn bộ lịch sử) */
+export const getRevenueYearly = async (): Promise<RevenueReport> => {
+  const { data } = await axiosInstance.get<ApiResponse<RevenueReport>>('/revenue/yearly');
+  return data.result;
+};
+
+// ================================================================
+// UPLOAD APIs
+// ================================================================
+
+export const uploadAvatar = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const { data } = await axiosInstance.post<ApiResponse<string>>('/upload/avatar', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return data.result;
+};
+
+/** Tổng doanh thu toàn thời gian */
+export const getTotalRevenue = async (): Promise<number> => {
+  const { data } = await axiosInstance.get<ApiResponse<number>>('/revenue/total');
+  return data.result ?? 0;
 };

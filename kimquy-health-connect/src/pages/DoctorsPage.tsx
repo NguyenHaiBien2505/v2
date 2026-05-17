@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { FaStar } from 'react-icons/fa';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -7,8 +7,19 @@ import { doctors, specialties } from '../data/mockData';
 import styles from './DoctorsPage.module.css';
 
 const DoctorsPage = () => {
+  const location = useLocation();
   const [specFilter, setSpecFilter] = useState<number>(0);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const spec = params.get('specialty');
+    if (spec) {
+      setSpecFilter(Number(spec));
+    } else {
+      setSpecFilter(0);
+    }
+  }, [location.search]);
 
   const filtered = useMemo(() => {
     return doctors.filter((d) => {

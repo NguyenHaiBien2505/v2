@@ -15,6 +15,7 @@ import java.util.UUID;
 public class UserResponse {
     UUID id;
     String username;
+    String email;
     String avatarUrl;
     String status;
     LocalDateTime createdAt;

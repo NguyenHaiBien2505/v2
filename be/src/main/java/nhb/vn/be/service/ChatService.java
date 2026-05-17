@@ -420,7 +420,7 @@ public class ChatService {
      * (specialty list + top 3 doctors).  Retries once on failure (Requirement 7.1).
      */
     private String callMedicalAI(String message, UUID userId, String conversationId) {
-        String systemPrompt = buildSystemPrompt();
+        String systemPrompt = buildSystemPrompt(message);
 
         for (int attempt = 0; attempt < 2; attempt++) {
             try {
@@ -454,12 +454,12 @@ public class ChatService {
     }
 
     /**
-     * Builds the system prompt injected with live DB data:
-     * - list of specialties
-     * - top 5 doctors by rating
-     * - medical services available
+     * RAG (Retrieval-Augmented Generation) Implementation:
+     * Dynamically builds the system prompt by querying the database based on the user's message.
+     * This ensures the AI has the specific context needed to answer the question directly.
      */
-    private String buildSystemPrompt() {
+    private String buildSystemPrompt(String message) {
+        String lowerMessage = message != null ? message.toLowerCase() : "";
         StringBuilder sb = new StringBuilder();
         sb.append("""
                 Bạn là trợ lý AI y tế chuyên nghiệp của Bệnh viện Kim Quy.
@@ -492,11 +492,11 @@ public class ChatService {
 
                 """);
 
-        // Inject specialties from DB
+        // RAG Retrieval: Inject specialties from DB
         try {
             List<Specialty> specialties = specialtyRepository.findAll();
             if (!specialties.isEmpty()) {
-                sb.append("=== CHUYÊN KHOA HIỆN CÓ TẠI BỆNH VIỆN ===\n");
+                sb.append("=== CHUYÊN KHOA HIỆN CÓ ===\n");
                 specialties.forEach(s -> sb.append("- ").append(s.getName())
                         .append(s.getDescription() != null && !s.getDescription().isBlank()
                                 ? ": " + s.getDescription() : "")
@@ -504,44 +504,95 @@ public class ChatService {
                 sb.append("\n");
             }
         } catch (Exception e) {
-            log.warn("Could not load specialties for system prompt", e);
+            log.warn("Could not load specialties", e);
         }
 
-        // Inject top 5 doctors from DB
+        // RAG Retrieval: Doctors matching the user's message or symptom
         try {
-            List<Doctor> topDoctors = doctorRepository.findTop3ByOrderByRatingDesc(PageRequest.of(0, 5));
-            if (!topDoctors.isEmpty()) {
-                sb.append("=== BÁC SĨ NỔI BẬT ===\n");
-                topDoctors.forEach(d -> {
+            List<Doctor> allDoctors = doctorRepository.findAll();
+            String mappedSpecialty = doctorSuggestionHelper.mapSymptomToSpecialty(lowerMessage);
+            
+            List<Doctor> relevantDoctors = allDoctors.stream()
+                    .filter(d -> {
+                        String nameLower = d.getFullName().toLowerCase();
+                        String specLower = d.getSpecialty() != null ? d.getSpecialty().getName().toLowerCase() : "";
+                        // Match name
+                        if (lowerMessage.contains(nameLower)) return true;
+                        // Match last name (e.g. "bác sĩ Tuấn")
+                        String[] parts = nameLower.split(" ");
+                        if (parts.length > 0 && lowerMessage.contains("bác sĩ " + parts[parts.length - 1])) return true;
+                        if (parts.length > 0 && lowerMessage.contains("bs " + parts[parts.length - 1])) return true;
+                        // Match mapped specialty
+                        if (mappedSpecialty != null && specLower.equalsIgnoreCase(mappedSpecialty.toLowerCase())) return true;
+                        // Match raw specialty text
+                        if (!specLower.isEmpty() && lowerMessage.contains(specLower)) return true;
+                        return false;
+                    })
+                    .toList();
+
+            if (relevantDoctors.isEmpty()) {
+                // Fallback: top 3
+                relevantDoctors = doctorRepository.findTop3ByOrderByRatingDesc(PageRequest.of(0, 3));
+            } else {
+                relevantDoctors = relevantDoctors.stream().limit(5).toList(); // limit context size
+            }
+
+            if (!relevantDoctors.isEmpty()) {
+                sb.append("=== THÔNG TIN BÁC SĨ (Dữ liệu truy vấn) ===\n");
+                relevantDoctors.forEach(d -> {
                     String specialty = d.getSpecialty() != null ? d.getSpecialty().getName() : "Tổng quát";
                     String degree = d.getDegree() != null ? d.getDegree() : "BS";
                     long fee = d.getClinicFee() != null ? d.getClinicFee().longValue() : 0;
-                    sb.append(String.format("- %s %s (Chuyên khoa: %s, Phí: %,d VNĐ)\n",
-                            degree, d.getFullName(), specialty, fee));
+                    Double rating = doctorRepository.getAverageRating(d.getId());
+                    sb.append(String.format("- %s %s (Chuyên khoa: %s, Phí: %,d VNĐ, Đánh giá: %.1f/5)\n",
+                            degree, d.getFullName(), specialty, fee, rating != null ? rating : 5.0));
                 });
                 sb.append("\n");
             }
         } catch (Exception e) {
-            log.warn("Could not load top doctors for system prompt", e);
+            log.warn("Could not retrieve doctors for RAG", e);
         }
 
-        // Inject medical services from DB
+        // RAG Retrieval: Medical Services matching the message
         try {
-            List<MedicalService> services = medicalServiceRepository.findAll().stream().limit(10).toList();
-            if (!services.isEmpty()) {
-                sb.append("=== DỊCH VỤ Y TẾ ===\n");
-                services.forEach(s -> sb.append("- ").append(s.getName())
-                        .append(s.getPrice() != null ? String.format(" (Giá: %,d VNĐ)", s.getPrice()) : "")
+            List<MedicalService> allServices = medicalServiceRepository.findAll();
+            List<MedicalService> relevantServices = allServices.stream()
+                    .filter(s -> {
+                        String sName = s.getName().toLowerCase();
+                        // Either the message contains the service name, or the service name contains a key word from the message
+                        if (lowerMessage.contains(sName)) return true;
+                        // Break service name into words and see if message has it (simple heuristic)
+                        if (sName.contains("siêu âm") && lowerMessage.contains("siêu âm")) return true;
+                        if (sName.contains("xét nghiệm") && lowerMessage.contains("xét nghiệm")) return true;
+                        if (sName.contains("x-quang") && lowerMessage.contains("x-quang")) return true;
+                        if (sName.contains("nội soi") && lowerMessage.contains("nội soi")) return true;
+                        if (sName.contains("khám") && lowerMessage.contains("giá khám")) return true;
+                        return false;
+                    })
+                    .toList();
+
+            if (relevantServices.isEmpty()) {
+                // If no specific match, just show some common ones
+                relevantServices = allServices.stream().limit(5).toList();
+            } else {
+                relevantServices = relevantServices.stream().limit(10).toList();
+            }
+
+            if (!relevantServices.isEmpty()) {
+                sb.append("=== BẢNG GIÁ DỊCH VỤ Y TẾ (Dữ liệu truy vấn) ===\n");
+                relevantServices.forEach(s -> sb.append("- ").append(s.getName())
+                        .append(s.getPrice() != null ? String.format(": %,d VNĐ", s.getPrice()) : "")
                         .append("\n"));
                 sb.append("\n");
             }
         } catch (Exception e) {
-            log.warn("Could not load medical services for system prompt", e);
+            log.warn("Could not retrieve services for RAG", e);
         }
 
         sb.append("=== NHẮC NHỞ ===\n");
+        sb.append("Bạn CHỈ ĐƯỢC sử dụng các thông tin dữ liệu truy vấn phía trên để trả lời câu hỏi. ");
         sb.append("Luôn ưu tiên sức khỏe và sự an toàn của bệnh nhân. ");
-        sb.append("Trả lời chính xác, trung thực, và hướng dẫn người dùng sử dụng dịch vụ bệnh viện khi cần thiết.");
+        sb.append("Trả lời đúng trọng tâm câu hỏi của người dùng một cách chính xác.");
         return sb.toString();
     }
 

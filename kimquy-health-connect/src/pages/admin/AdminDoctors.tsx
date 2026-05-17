@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FiSearch, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiUpload } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { adminSidebar } from './adminSidebar';
-import { getAllSpecialties, getAdminDoctors, createAdminDoctor, updateAdminDoctor, deleteAdminDoctor, type AdminDoctorRow } from '../../services/healthApi';
+import { getAllSpecialties, getAdminDoctors, createAdminDoctor, updateAdminDoctor, deleteAdminDoctor, uploadAvatar, type AdminDoctorRow } from '../../services/healthApi';
 import styles from './Admin.module.css';
 
 type SpecialtyOption = { id: number; name: string };
@@ -10,6 +11,7 @@ type SpecialtyOption = { id: number; name: string };
 interface DoctorForm {
   fullName: string;
   username: string;
+  email: string;
   password: string;
   degree: string;
   avatarUrl: string;
@@ -30,6 +32,7 @@ const AdminDoctors = () => {
   const [form, setForm] = useState<DoctorForm>({
     fullName: '',
     username: '',
+    email: '',
     password: '',
     degree: '',
     avatarUrl: '',
@@ -43,6 +46,8 @@ const AdminDoctors = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -73,6 +78,7 @@ const AdminDoctors = () => {
     setForm({
       fullName: '',
       username: '',
+      email: '',
       password: '',
       degree: '',
       avatarUrl: '',
@@ -91,6 +97,7 @@ const AdminDoctors = () => {
     setForm({
       fullName: d.fullName,
       username: d.username,
+      email: d.email ?? '',
       password: '',
       degree: d.degree,
       avatarUrl: d.avatarUrl,
@@ -104,13 +111,36 @@ const AdminDoctors = () => {
     setShowModal(true);
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Xóa bác sĩ này?')) return;
+  const openDeleteConfirm = (id: string) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const remove = async () => {
+    if (!deleteTargetId) return;
     try {
-      await deleteAdminDoctor(id);
+      await deleteAdminDoctor(deleteTargetId);
       await refresh();
     } catch {
       setError('Xóa bác sĩ thất bại.');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setSaving(true);
+      const url = await uploadAvatar(file);
+      setForm({ ...form, avatarUrl: url });
+    } catch (err) {
+      setError('Không thể upload ảnh. Vui lòng thử lại.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -126,6 +156,7 @@ const AdminDoctors = () => {
       if (editing) {
         await updateAdminDoctor(editing.id, {
           fullName: form.fullName,
+          email: form.email || undefined,
           degree: form.degree,
           avatarUrl: form.avatarUrl || undefined,
           bio: form.bio,
@@ -139,6 +170,7 @@ const AdminDoctors = () => {
         await createAdminDoctor({
           fullName: form.fullName,
           username: form.username,
+          email: form.email || undefined,
           password: form.password,
           degree: form.degree,
           avatarUrl: form.avatarUrl || undefined,
@@ -201,7 +233,7 @@ const AdminDoctors = () => {
                   <td>
                     <div className={styles.actions}>
                       <button className={styles.btnIcon} onClick={() => openEdit(d)}><FiEdit2 /></button>
-                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => remove(d.id)}><FiTrash2 /></button>
+                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => openDeleteConfirm(d.id)}><FiTrash2 /></button>
                     </div>
                   </td>
                 </tr>
@@ -232,6 +264,10 @@ const AdminDoctors = () => {
                   <label>{editing ? 'Mật khẩu mới' : 'Mật khẩu *'}</label>
                   <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} placeholder={editing ? 'Để trống nếu không đổi' : ''} />
                 </div>
+              </div>
+              <div className={styles.formGroup}>
+                <label>Email</label>
+                <input type="email" placeholder="example@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
@@ -267,8 +303,26 @@ const AdminDoctors = () => {
                 </div>
               </div>
               <div className={styles.formGroup}>
-                <label>Avatar URL</label>
-                <input value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} />
+                <label>Ảnh đại diện</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className={styles.avatarPreview} style={{ width: 60, height: 60, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'grid', placeItems: 'center' }}>
+                    {form.avatarUrl ? (
+                      <img src={form.avatarUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <img src="https://i.pravatar.cc/150?img=12" alt="Default" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    )}
+                  </div>
+                  <label className={styles.btnSecondary} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <FiUpload /> {saving ? 'Đang tải...' : 'Chọn ảnh từ máy'}
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} disabled={saving} />
+                  </label>
+                </div>
+                <input 
+                  style={{ marginTop: 8, fontSize: '12px', opacity: 0.7 }}
+                  value={form.avatarUrl} 
+                  onChange={e => setForm({ ...form, avatarUrl: e.target.value })} 
+                  placeholder="Hoặc dán URL ảnh vào đây"
+                />
               </div>
               <div className={styles.formGroup}>
                 <label>Tiểu sử</label>
@@ -282,6 +336,20 @@ const AdminDoctors = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Xóa bác sĩ"
+        message="Bạn có chắc chắn muốn xóa bác sĩ này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDangerous={true}
+        onConfirm={remove}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+      />
     </DashboardLayout>
   );
 };

@@ -149,6 +149,69 @@ public class PaymentService {
         }
     }
 
+    public PaymentResponseDTO verifyPayment(Long orderCode, Long appointmentId) {
+        Payment payment = null;
+        if (orderCode != null) {
+            payment = paymentRepository.findByOrderCode(orderCode).orElse(null);
+        }
+        if (payment == null && appointmentId != null) {
+            payment = paymentRepository.findByTargetTypeAndTargetId(PaymentTargetType.APPOINTMENT, appointmentId).orElse(null);
+        }
+
+        if (payment == null) {
+            return null;
+        }
+
+        // Nếu PENDING, thử gọi trực tiếp PayOS API xem đã thanh toán chưa (phòng trường hợp webhook bị miss khi chạy local)
+        if ("PENDING".equals(payment.getStatus()) && payment.getOrderCode() != null) {
+            try {
+                org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+                headers.set("x-client-id", clientId);
+                headers.set("x-api-key", apiKey);
+                org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(headers);
+
+                org.springframework.http.ResponseEntity<java.util.Map> response = restTemplate.exchange(
+                        "https://api-merchant.payos.vn/v2/payment-requests/" + payment.getOrderCode(),
+                        org.springframework.http.HttpMethod.GET,
+                        entity,
+                        java.util.Map.class
+                );
+
+                java.util.Map<String, Object> body = response.getBody();
+                if (body != null && body.containsKey("data")) {
+                    java.util.Map<String, Object> data = (java.util.Map<String, Object>) body.get("data");
+                    String status = (String) data.get("status");
+                    if ("PAID".equals(status)) {
+                        payment.setStatus("PAID");
+                        payment.setPaidAt(LocalDateTime.now());
+                        paymentRepository.save(payment);
+                        updateTargetOnSuccess(payment);
+                    } else if ("CANCELLED".equals(status)) {
+                        payment.setStatus("CANCELLED");
+                        paymentRepository.save(payment);
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Lỗi khi kiểm tra trạng thái từ PayOS: ", e);
+            }
+        }
+
+        // Nếu payment đã PAID (qua webhook hoặc đoạn trên), đảm bảo appointment cũng được update
+        if ("PAID".equals(payment.getStatus()) && payment.getTargetType() == PaymentTargetType.APPOINTMENT) {
+            updateTargetOnSuccess(payment);
+        }
+
+        return PaymentResponseDTO.builder()
+                .orderCode(payment.getOrderCode())
+                .amount(payment.getAmount())
+                .description(payment.getDescription())
+                .status(payment.getStatus())
+                .qrCode(payment.getQrCode())
+                .checkoutUrl(payment.getCheckoutUrl())
+                .build();
+    }
+
     // ================================================================
     // PRIVATE HELPERS
     // ================================================================
@@ -268,6 +331,7 @@ public class PaymentService {
                         .findById(payment.getTargetId())
                         .orElseThrow();
                 appointment.setStatus("CONFIRMED");
+                appointment.setPaymentStatus("PAID");
                 appointmentRepository.save(appointment);
                 log.info("Appointment {} confirmed", payment.getTargetId());
             }

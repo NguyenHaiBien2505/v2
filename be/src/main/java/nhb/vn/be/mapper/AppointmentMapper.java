@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 public interface AppointmentMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", ignore = true)
+    @Mapping(target = "paymentStatus", ignore = true)
     @Mapping(target = "endTime", ignore = true)
     @Mapping(target = "notes", ignore = true)
     @Mapping(target = "queueNumber", ignore = true)
@@ -28,5 +29,6 @@ public interface AppointmentMapper {
     @Mapping(source = "doctor.fullName", target = "doctorName")
     @Mapping(source = "doctor.avatarUrl", target = "doctorAvatar")
     @Mapping(source = "schedule.id", target = "scheduleId")
+    @Mapping(source = "paymentStatus", target = "paymentStatus")
     AppointmentResponse toAppointmentResponse(Appointment appointment);
 }

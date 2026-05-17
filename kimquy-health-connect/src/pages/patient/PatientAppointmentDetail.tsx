@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { FiArrowLeft, FiCalendar, FiClock, FiMapPin } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import NotificationDialog from '../../components/NotificationDialog';
 import { patientSidebar } from './PatientDashboard';
 import { generateTimeSlots, type Appointment, type MedicalRecord } from '../../data/mockData';
 import { useAuthStore } from '../../store/authStore';
 import { cancelAppointment, createAppointment, createAppointmentPayment, getAppointment, getPatientMedicalRecords } from '../../services/healthApi';
 import { sendNotification } from '../../services/notificationService';
+import { useNotification } from '../../hooks/useNotification';
 import dashStyles from './PatientDashboard.module.css';
 import styles from './PatientAppointmentDetail.module.css';
 
@@ -18,6 +20,7 @@ const PatientAppointmentDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const profile = useAuthStore((s) => s.profile) as { id?: string } | null;
+  const { notification, showSuccess, showError, showConfirm, closeNotification } = useNotification();
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [record, setRecord] = useState<MedicalRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +47,38 @@ const PatientAppointmentDetail = () => {
 
     load();
   }, [id, profile?.id]);
+
+  // Auto-refetch when window focuses (e.g., after payment redirect)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (!id || appointment?.paymentStatus === 'PAID') return;
+      (async () => {
+        try {
+          const appt = await getAppointment(Number(id));
+          setAppointment(appt);
+        } catch (err) {
+          console.error('Auto-refetch failed', err);
+        }
+      })();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [id, appointment?.paymentStatus]);
+
+  const handleCheckStatus = async () => {
+    if (!id) return;
+    try {
+      const appt = await getAppointment(Number(id));
+      setAppointment(appt);
+      if (appt.paymentStatus === 'PAID') {
+        showSuccess('Thanh toán thành công', 'Trạng thái lịch hẹn đã được cập nhật.');
+      }
+    } catch (err) {
+      console.error('Check status failed', err);
+      showError('Lỗi', err);
+    }
+  };
 
   const [showCancel, setShowCancel] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
@@ -86,17 +121,21 @@ const PatientAppointmentDetail = () => {
       window.location.href = payment.checkoutUrl;
     } catch (error) {
       console.error(error);
-      alert('Không tạo được link thanh toán. Vui lòng thử lại sau.');
+      showError('Lỗi thanh toán', error);
     } finally {
       setIsPaying(false);
     }
   };
 
   const handleCancel = () => {
-    if (!cancelReason.trim()) { alert('Vui lòng nhập lý do hủy'); return; }
+    if (!cancelReason.trim()) {
+      showError('Lỗi', 'Vui lòng nhập lý do hủy');
+      return;
+    }
     cancelAppointment(appointment.id).catch(() => null);
     setLocalStatus('CANCELLED');
     setShowCancel(false);
+    showSuccess('Thành công', 'Lịch hẹn đã được hủy');
     sendNotification({
       event: 'APPOINTMENT_CANCELLED',
       channels: ['EMAIL', 'SMS'],
@@ -107,7 +146,10 @@ const PatientAppointmentDetail = () => {
   };
 
   const handleReschedule = () => {
-    if (!newDate || !newTime || !profile?.id) { alert('Vui lòng chọn ngày và giờ mới'); return; }
+    if (!newDate || !newTime || !profile?.id) {
+      showError('Lỗi', 'Vui lòng chọn ngày và giờ mới');
+      return;
+    }
     const doctorId = String(appointment.doctorId);
     createAppointment(profile.id, doctorId, {
       appointmentDate: newDate,
@@ -120,6 +162,10 @@ const PatientAppointmentDetail = () => {
         setLocalDate(newDate);
         setLocalTime(newTime);
         setLocalStatus('PENDING');
+        showSuccess('Thành công', 'Lịch hẹn đã được sắp xếp lại');
+      })
+      .catch((error) => {
+        showError('Lỗi sắp xếp lại', error);
       })
       .finally(() => setShowReschedule(false));
     sendNotification({
@@ -156,24 +202,43 @@ const PatientAppointmentDetail = () => {
             <div className={styles.row}><span className={styles.label}>Loại khám</span><span className={styles.value}>{appointment.appointmentType === 'REVISIT' ? 'Tái khám' : 'Khám lần đầu'}</span></div>
             <div className={styles.row}><span className={styles.label}>Dịch vụ</span><span className={styles.value}>{appointment.serviceName}</span></div>
             <div className={styles.row}><span className={styles.label}>Trạng thái</span><span className={`status-badge status-badge--${status.toLowerCase()}`}>{statusLabel[status]}</span></div>
+            <div className={styles.row}><span className={styles.label}>Trạng thái thanh toán</span><span className={styles.value}>{appointment.paymentStatus === 'PAID' ? '✓ Đã thanh toán' : '⊘ Chưa thanh toán'}</span></div>
             <div className={styles.row}><span className={styles.label}><FiMapPin style={{ marginRight: 6 }} />Địa điểm</span><span className={styles.value}>Phòng khám Kim Quy</span></div>
           </div>
 
           {canPay && (
             <div className={styles.card}>
               <div className={styles.cardTitle}>Thanh toán</div>
-              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', margin: 0 }}>
-                Thanh toán trực tiếp qua PayOS để giữ chỗ và cập nhật trạng thái lịch hẹn.
-              </p>
-              <button
-                type="button"
-                className={`${styles.btn} ${styles.btnPrimary}`}
-                onClick={handlePayment}
-                disabled={isPaying}
-                style={{ marginTop: '1rem', width: '100%' }}
-              >
-                {isPaying ? 'Đang tạo link thanh toán...' : 'Thanh toán ngay'}
-              </button>
+              {appointment.paymentStatus === 'UNPAID' ? (
+                <>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                    Thanh toán trực tiếp qua PayOS để giữ chỗ và cập nhật trạng thái lịch hẹn.
+                  </p>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnPrimary}`}
+                    onClick={handlePayment}
+                    disabled={isPaying}
+                    style={{ marginTop: '1rem', width: '100%' }}
+                  >
+                    {isPaying ? 'Đang tạo link thanh toán...' : 'Thanh toán ngay'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p style={{ fontSize: '0.9rem', color: 'var(--color-success)', margin: 0, fontWeight: 500 }}>
+                    ✓ Lịch hẹn đã được thanh toán. Nếu trạng thái chưa cập nhật, bạn có thể kiểm tra lại.
+                  </p>
+                  <button
+                    type="button"
+                    className={`${styles.btn} ${styles.btnOutline}`}
+                    onClick={handleCheckStatus}
+                    style={{ marginTop: '1rem', width: '100%' }}
+                  >
+                    Kiểm tra trạng thái
+                  </button>
+                </>
+              )}
             </div>
           )}
 

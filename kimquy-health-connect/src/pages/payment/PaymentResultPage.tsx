@@ -4,6 +4,7 @@ import { FiAlertTriangle, FiArrowLeft, FiCheckCircle, FiHome, FiRefreshCw } from
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import styles from './PaymentResultPage.module.css';
+import axiosInstance from '../../services/axiosInstance';
 
 type PaymentResultPageProps = {
   mode: 'success' | 'cancel';
@@ -18,6 +19,9 @@ const PaymentResultPage = ({ mode }: PaymentResultPageProps) => {
   const orderCode = query.get('orderCode') ?? query.get('order_id') ?? query.get('orderCodeId') ?? '';
   const amount = query.get('amount') ?? '';
   const message = query.get('message') ?? query.get('msg') ?? '';
+  const isSuccess = mode === 'success';
+  const returnPath = paymentSource === 'medical-service' ? '/services' : '/patient/appointments';
+  const returnLabel = paymentSource === 'medical-service' ? 'Về dịch vụ' : 'Về lịch hẹn';
 
   useEffect(() => {
     // Detect payment source from localStorage or URL
@@ -35,16 +39,42 @@ const PaymentResultPage = ({ mode }: PaymentResultPageProps) => {
     localStorage.removeItem('pendingPayment');
   }, []);
 
-  const isSuccess = mode === 'success';
+  const [verifying, setVerifying] = useState(false);
+  const [verifiedStatus, setVerifiedStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    const tryVerify = async () => {
+      if (!isSuccess) return;
+      const code = orderCode?.trim();
+      if (!code) return;
+      setVerifying(true);
+      try {
+        const { data } = await axiosInstance.get(`/payment/verify?orderCode=${encodeURIComponent(code)}`);
+        if (data) {
+          const status = data.status ?? data.result?.status ?? null;
+          setVerifiedStatus(status);
+          // If PAID, navigate back to appointments / services so UI refreshes
+          if (status === 'PAID') {
+            // small delay so user can see success page
+            setTimeout(() => navigate(returnPath), 1200);
+          }
+        }
+      } catch (e) {
+        // ignore - verification optional
+      } finally {
+        setVerifying(false);
+      }
+    };
+
+    tryVerify();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuccess, orderCode]);
   const title = isSuccess ? 'Thanh toán thành công' : 'Thanh toán chưa hoàn tất';
   const description = isSuccess
     ? paymentSource === 'medical-service'
       ? 'Hệ thống đã ghi nhận giao dịch mua dịch vụ. Bạn có thể kiểm tra lịch sử mua hàng hoặc tiếp tục duyệt dịch vụ khác.'
       : 'Hệ thống đã ghi nhận giao dịch và cập nhật trạng thái ở backend.'
     : 'Bạn có thể thử lại hoặc quay về để thanh toán sau.';
-
-  const returnPath = paymentSource === 'medical-service' ? '/services' : '/patient/appointments';
-  const returnLabel = paymentSource === 'medical-service' ? 'Về dịch vụ' : 'Về lịch hẹn';
 
   return (
     <div className={styles.page}>
@@ -66,7 +96,7 @@ const PaymentResultPage = ({ mode }: PaymentResultPageProps) => {
             <div className={styles.metaRow}><span>Mã đơn hàng</span><strong>{orderCode || 'Chưa có'}</strong></div>
             <div className={styles.metaRow}><span>Số tiền</span><strong>{amount ? `${Number(amount).toLocaleString('vi-VN')} ₫` : 'Chưa có'}</strong></div>
             <div className={styles.metaRow}><span>Loại</span><strong>{paymentSource === 'medical-service' ? 'Dịch vụ' : 'Lịch khám'}</strong></div>
-            <div className={styles.metaRow}><span>Trạng thái</span><strong>{isSuccess ? 'Đã xử lý' : 'Bị huỷ'}</strong></div>
+            <div className={styles.metaRow}><span>Trạng thái</span><strong>{isSuccess ? (verifiedStatus === 'PAID' ? 'Đã thanh toán' : (verifying ? 'Đang kiểm tra...' : 'Đã xử lý')) : 'Bị huỷ'}</strong></div>
           </article>
 
           <article className={styles.card}>

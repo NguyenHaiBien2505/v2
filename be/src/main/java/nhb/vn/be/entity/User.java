@@ -26,6 +26,9 @@ public class User {
     @Column(unique = true)
     String username;
 
+    @Column(unique = true)
+    String email;
+
     String password;
     String avatarUrl;
 

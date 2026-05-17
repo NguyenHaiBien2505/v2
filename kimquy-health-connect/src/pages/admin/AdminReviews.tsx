@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { adminSidebar } from './adminSidebar';
 import { type Review } from '../../data/mockData';
 import { deleteReview, getAdminReviewsAggregate } from '../../services/healthApi';
@@ -11,6 +12,8 @@ interface ReviewItem extends Review { hidden?: boolean; doctorName?: string }
 const AdminReviews = () => {
   const [list, setList] = useState<ReviewItem[]>([]);
   const [filter, setFilter] = useState<'ALL' | 'VISIBLE' | 'HIDDEN'>('ALL');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   useEffect(() => {
     getAdminReviewsAggregate()
@@ -23,10 +26,17 @@ const AdminReviews = () => {
   );
 
   const toggle = (id: number) => setList(list.map(r => r.id === id ? { ...r, hidden: !r.hidden } : r));
-  const remove = (id: number) => {
-    if (!confirm('Xóa đánh giá này?')) return;
-    deleteReview(id).catch(() => null);
-    setList(list.filter((r) => r.id !== id));
+  const openDeleteConfirm = (id: number) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const remove = () => {
+    if (deleteTargetId === null) return;
+    deleteReview(deleteTargetId).catch(() => null);
+    setList(list.filter((r) => r.id !== deleteTargetId));
+    setShowDeleteConfirm(false);
+    setDeleteTargetId(null);
   };
 
   const avgRating = list.length ? (list.reduce((s, r) => s + r.rating, 0) / list.length).toFixed(1) : '0';
@@ -59,7 +69,7 @@ const AdminReviews = () => {
                 <button className={styles.btnIcon} onClick={() => toggle(r.id)} title={r.hidden ? 'Hiện' : 'Ẩn'}>
                   {r.hidden ? <FiEye /> : <FiEyeOff />}
                 </button>
-                <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => remove(r.id)}><FiTrash2 /></button>
+                <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => openDeleteConfirm(r.id)}><FiTrash2 /></button>
               </div>
             </div>
             <p style={{ margin: 0, color: r.hidden ? 'var(--color-text-light)' : 'var(--color-text)', fontStyle: r.hidden ? 'italic' : 'normal' }}>
@@ -68,6 +78,20 @@ const AdminReviews = () => {
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Xóa đánh giá"
+        message="Bạn có chắc chắn muốn xóa đánh giá này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDangerous={true}
+        onConfirm={remove}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+      />
     </DashboardLayout>
   );
 };

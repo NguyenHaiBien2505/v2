@@ -63,9 +63,11 @@ interface AuthState {
   register: (data: {
     fullName: string;
     username: string;
+    email: string;
     phone: string;
     password: string;
     dateOfBirth?: string;
+    avatarUrl?: string;
   }) => Promise<boolean>;
   logout: () => void;
 }
@@ -207,9 +209,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       await axiosInstance.post<ApiResponse<any>>('/patients/register', {
         fullName: data.fullName,
         phone: data.phone,
+        email: data.email,
         username: data.username,
         password: data.password,
         dob: data.dateOfBirth || null,
+        avatarUrl: data.avatarUrl || null,
       });
       return await useAuthStore.getState().login(data.username, data.password);
     } catch {

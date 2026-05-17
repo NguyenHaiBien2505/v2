@@ -52,7 +52,11 @@ const DoctorAppointments = () => {
     load();
   }, [profile?.id]);
 
-  const filtered = filter === 'ALL' ? appts : appts.filter(a => a.status === filter);
+  const filtered = (filter === 'ALL' ? appts : appts.filter(a => a.status === filter)).sort((a, b) => {
+    const strA = `${a.appointmentDate}T${a.startTime || '00:00'}`;
+    const strB = `${b.appointmentDate}T${b.startTime || '00:00'}`;
+    return strB.localeCompare(strA);
+  });
 
   const approveAppt = (appt: Appointment) => {
     updateAppointmentStatus(appt.id, 'CONFIRMED').catch(() => null);
@@ -165,7 +169,7 @@ const DoctorAppointments = () => {
           <tbody>
             {filtered.map(a => (
               <tr key={a.id}>
-                <td>{a.patientCode ? <code style={{ fontSize: 11 }}>{a.patientCode}</code> : `BN #${a.patientId}`}</td>
+                <td>{a.patientName || (a.patientCode ? <code style={{ fontSize: 11 }}>{a.patientCode}</code> : `BN #${a.patientId}`)}</td>
                 <td><strong style={{ color: 'var(--color-primary)' }}>{a.queueNumber ?? '—'}</strong></td>
                 <td>
                   <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: a.appointmentType === 'REVISIT' ? '#fef3c7' : '#dbeafe', color: a.appointmentType === 'REVISIT' ? '#92400e' : '#1e40af' }}>
@@ -222,7 +226,7 @@ const DoctorAppointments = () => {
             <div className={styles.modalTitle}>Chi tiết lịch hẹn #{selectedAppt.id}</div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-              <div><strong>Bệnh nhân:</strong> {selectedAppt.patientCode || `#${selectedAppt.patientId}`}</div>
+              <div><strong>Bệnh nhân:</strong> {selectedAppt.patientName || selectedAppt.patientCode || `#${selectedAppt.patientId}`}</div>
               <div><strong>STT:</strong> #{selectedAppt.queueNumber ?? '—'}</div>
               <div><strong>Loại khám:</strong> {selectedAppt.appointmentType === 'REVISIT' ? 'Tái khám' : 'Khám lần đầu'}</div>
               <div><strong>Ngày:</strong> {selectedAppt.appointmentDate}</div>

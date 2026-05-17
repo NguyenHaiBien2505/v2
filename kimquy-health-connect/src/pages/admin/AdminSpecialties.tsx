@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { adminSidebar } from './adminSidebar';
 import { type Specialty } from '../../data/mockData';
 import { getAllSpecialties, createSpecialty, updateSpecialty, deleteSpecialty } from '../../services/healthApi';
@@ -13,16 +14,26 @@ const AdminSpecialties = () => {
   const [form, setForm] = useState<Partial<Specialty>>({ isActive: true });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const openAdd = () => { setEditing(null); setForm({ isActive: true }); setShowModal(true); };
   const openEdit = (s: Specialty) => { setEditing(s); setForm(s); setShowModal(true); };
-  const remove = async (id: number) => {
-    if (!confirm('Xóa chuyên khoa này?')) return;
+  const openDeleteConfirm = (id: number) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const remove = async () => {
+    if (deleteTargetId === null) return;
     try {
-      await deleteSpecialty(id);
-      setList(list.filter(s => s.id !== id));
+      await deleteSpecialty(deleteTargetId);
+      setList(list.filter(s => s.id !== deleteTargetId));
     } catch (e) {
       alert('Xóa thất bại');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
     }
   };
 
@@ -72,18 +83,18 @@ const AdminSpecialties = () => {
       <div className={styles.tableCard}>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
-            <thead><tr><th>ID</th><th>Tên</th><th>Mô tả</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+            <thead><tr><th>STT</th><th>Tên</th><th>Mô tả</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
             <tbody>
-              {list.map(s => (
+              {list.map((s, idx) => (
                 <tr key={s.id}>
-                  <td>#{s.id}</td>
+                  <td>{idx + 1}</td>
                   <td><strong>{s.name}</strong></td>
                   <td>{s.description}</td>
                   <td><span className={`${styles.statusBadge} ${s.isActive ? styles.statusActive : styles.statusInactive}`}>{s.isActive ? 'Hoạt động' : 'Tạm dừng'}</span></td>
                   <td>
                     <div className={styles.actions}>
                       <button className={styles.btnIcon} onClick={() => openEdit(s)}><FiEdit2 /></button>
-                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => remove(s.id)}><FiTrash2 /></button>
+                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => openDeleteConfirm(s.id)}><FiTrash2 /></button>
                     </div>
                   </td>
                 </tr>
@@ -123,6 +134,20 @@ const AdminSpecialties = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Xóa chuyên khoa"
+        message="Bạn có chắc chắn muốn xóa chuyên khoa này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDangerous={true}
+        onConfirm={remove}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+      />
     </DashboardLayout>
   );
 };

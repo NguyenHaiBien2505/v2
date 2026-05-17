@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { adminSidebar } from './adminSidebar';
 import { type Banner } from '../../data/mockData';
 import { createAdminBanner, deleteAdminBanner, getAdminBanners, updateAdminBanner } from '../../services/healthApi';
@@ -11,13 +12,22 @@ const AdminBanners = () => {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Banner | null>(null);
   const [form, setForm] = useState<Partial<Banner>>({ sortOrder: 0, isActive: true });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
   const openAdd = () => { setEditing(null); setForm({ sortOrder: list.length + 1, isActive: true }); setShowModal(true); };
   const openEdit = (b: Banner) => { setEditing(b); setForm(b); setShowModal(true); };
-  const remove = async (id: number) => {
-    if (!confirm('Xóa banner này?')) return;
-    await deleteAdminBanner(id);
-    setList(list.filter(b => b.id !== id));
+  const openDeleteConfirm = (id: number) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const remove = async () => {
+    if (deleteTargetId === null) return;
+    await deleteAdminBanner(deleteTargetId);
+    setList(list.filter(b => b.id !== deleteTargetId));
+    setShowDeleteConfirm(false);
+    setDeleteTargetId(null);
   };
   const toggle = async (id: number) => {
     const target = list.find((b) => b.id === id);
@@ -99,7 +109,7 @@ const AdminBanners = () => {
                         {b.isActive ? <FiEyeOff /> : <FiEye />}
                       </button>
                       <button className={styles.btnIcon} onClick={() => openEdit(b)}><FiEdit2 /></button>
-                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => remove(b.id)}><FiTrash2 /></button>
+                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => openDeleteConfirm(b.id)}><FiTrash2 /></button>
                     </div>
                   </td>
                 </tr>
@@ -153,6 +163,20 @@ const AdminBanners = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Xóa banner"
+        message="Bạn có chắc chắn muốn xóa banner này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDangerous={true}
+        onConfirm={remove}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+      />
     </DashboardLayout>
   );
 };

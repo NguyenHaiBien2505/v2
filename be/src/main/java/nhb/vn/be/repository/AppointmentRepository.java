@@ -17,57 +17,82 @@ import java.util.UUID;
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    Page<Appointment> findByPatientId(UUID patientId, Pageable pageable);
-    Page<Appointment> findByDoctorId(UUID doctorId, Pageable pageable);
+        Page<Appointment> findByPatientId(UUID patientId, Pageable pageable);
 
-    // Lấy tất cả appointment của patient (không phân trang)
-    List<Appointment> findByPatientId(UUID patientId);
+        Page<Appointment> findByDoctorId(UUID doctorId, Pageable pageable);
 
-    // Lấy appointment theo ID (trả về Optional)
-    Optional<Appointment> findById(Long id);
+        // Lấy tất cả appointment của patient (không phân trang)
+        List<Appointment> findByPatientId(UUID patientId);
 
-    @Query("SELECT a FROM Appointment a WHERE a.doctor.id = :doctorId AND a.appointmentDate = :date")
-    List<Appointment> findDoctorAppointmentsByDate(@Param("doctorId") UUID doctorId,
-                                                   @Param("date") LocalDate date);
+        // Lấy appointment theo ID (trả về Optional)
+        Optional<Appointment> findById(Long id);
 
-    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.schedule.id = :scheduleId AND a.status != 'CANCELLED'")
-    int countBookedAppointments(@Param("scheduleId") Long scheduleId);
+        @Query("SELECT a FROM Appointment a WHERE a.doctor.id = :doctorId AND a.appointmentDate = :date")
+        List<Appointment> findDoctorAppointmentsByDate(@Param("doctorId") UUID doctorId,
+                        @Param("date") LocalDate date);
 
-    Optional<Appointment> findByPatientIdAndDoctorIdAndAppointmentDateAndStartTime(
-            UUID patientId, UUID doctorId, LocalDate date, LocalTime startTime);
+        @Query("SELECT COUNT(a) FROM Appointment a WHERE a.schedule.id = :scheduleId AND a.status != 'CANCELLED'")
+        int countBookedAppointments(@Param("scheduleId") Long scheduleId);
 
-    @Query("SELECT a FROM Appointment a WHERE a.patient.id = :patientId AND a.status IN ('PENDING', 'CONFIRMED')")
-    List<Appointment> findActiveAppointmentsByPatient(@Param("patientId") UUID patientId);
+        Optional<Appointment> findByPatientIdAndDoctorIdAndAppointmentDateAndStartTime(
+                        UUID patientId, UUID doctorId, LocalDate date, LocalTime startTime);
 
-    // Lấy appointment sắp tới của patient
-    @Query("SELECT a FROM Appointment a WHERE a.patient.id = :patientId AND a.status IN ('PENDING', 'CONFIRMED') AND a.appointmentDate >= CURRENT_DATE ORDER BY a.appointmentDate ASC")
-    List<Appointment> findUpcomingAppointmentsByPatient(@Param("patientId") UUID patientId);
+        @Query("SELECT a FROM Appointment a WHERE a.patient.id = :patientId AND a.status IN ('PENDING', 'CONFIRMED')")
+        List<Appointment> findActiveAppointmentsByPatient(@Param("patientId") UUID patientId);
+
+        // Lấy appointment sắp tới của patient
+        @Query("SELECT a FROM Appointment a WHERE a.patient.id = :patientId AND a.status IN ('PENDING', 'CONFIRMED') AND a.appointmentDate >= CURRENT_DATE ORDER BY a.appointmentDate ASC")
+        List<Appointment> findUpcomingAppointmentsByPatient(@Param("patientId") UUID patientId);
+
+        @Query("""
+                        SELECT COUNT(a) > 0
+                        FROM Appointment a
+                        WHERE a.doctor.id = :doctorId
+                          AND a.appointmentDate = :date
+                          AND a.status IN ('PENDING', 'CONFIRMED')
+                          AND a.startTime < :requestedEnd
+                          AND a.endTime > :requestedStart
+                        """)
+        boolean existsDoctorTimeConflict(@Param("doctorId") UUID doctorId,
+                        @Param("date") LocalDate date,
+                        @Param("requestedStart") LocalTime requestedStart,
+                        @Param("requestedEnd") LocalTime requestedEnd);
+
+        @Query("""
+                        SELECT COUNT(a) > 0
+                        FROM Appointment a
+                        WHERE a.patient.id = :patientId
+                          AND a.appointmentDate = :date
+                          AND a.status IN ('PENDING', 'CONFIRMED')
+                          AND a.startTime < :requestedEnd
+                          AND a.endTime > :requestedStart
+                        """)
+        boolean existsPatientTimeConflict(@Param("patientId") UUID patientId,
+                        @Param("date") LocalDate date,
+                        @Param("requestedStart") LocalTime requestedStart,
+                        @Param("requestedEnd") LocalTime requestedEnd);
+
+        /** Admin: lấy toàn bộ appointments, sắp xếp theo ngày giảm dần */
+        Page<Appointment> findAll(Pageable pageable);
 
     @Query("""
-            SELECT COUNT(a) > 0
-            FROM Appointment a
-            WHERE a.doctor.id = :doctorId
-              AND a.appointmentDate = :date
-              AND a.status IN ('PENDING', 'CONFIRMED')
-              AND a.startTime < :requestedEnd
-              AND a.endTime > :requestedStart
+            SELECT a FROM Appointment a
+            WHERE a.appointmentDate = :date
+              AND a.status IN :statuses
             """)
-    boolean existsDoctorTimeConflict(@Param("doctorId") UUID doctorId,
-                                     @Param("date") LocalDate date,
-                                     @Param("requestedStart") LocalTime requestedStart,
-                                     @Param("requestedEnd") LocalTime requestedEnd);
+    List<Appointment> findAppointmentsByDateAndStatus(
+            @Param("date") LocalDate date,
+            @Param("statuses") List<String> statuses);
 
     @Query("""
-            SELECT COUNT(a) > 0
-            FROM Appointment a
-            WHERE a.patient.id = :patientId
-              AND a.appointmentDate = :date
+            SELECT a FROM Appointment a
+            WHERE a.appointmentDate = :date
               AND a.status IN ('PENDING', 'CONFIRMED')
-              AND a.startTime < :requestedEnd
-              AND a.endTime > :requestedStart
+              AND a.startTime >= :from
+              AND a.startTime <= :to
             """)
-    boolean existsPatientTimeConflict(@Param("patientId") UUID patientId,
-                                      @Param("date") LocalDate date,
-                                      @Param("requestedStart") LocalTime requestedStart,
-                                      @Param("requestedEnd") LocalTime requestedEnd);
+    List<Appointment> findAppointmentsIn2Hours(
+            @Param("date") LocalDate date,
+            @Param("from") LocalTime from,
+            @Param("to") LocalTime to);
 }

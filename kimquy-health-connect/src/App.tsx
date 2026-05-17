@@ -53,6 +53,7 @@ import AdminAuditLogs from './pages/admin/AdminAuditLogs';
 import NotFound from './pages/NotFound';
 import MedicalServiceBookingPage from './pages/MedicalServiceBookingPage';
 import ChatbotPage from './pages/chatbot/ChatbotPage';
+import FloatingChatbot from './components/chat/FloatingChatbot';
 
 const App = () => (
   <BrowserRouter>
@@ -110,6 +111,7 @@ const App = () => (
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    <FloatingChatbot />
   </BrowserRouter>
 );
 

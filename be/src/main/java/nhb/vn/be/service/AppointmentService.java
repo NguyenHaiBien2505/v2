@@ -38,6 +38,7 @@ public class AppointmentService {
     PatientRepository patientRepository;
     ScheduleRepository scheduleRepository;
     AppointmentMapper appointmentMapper;
+    EmailService emailService;
 
     @Transactional
     public AppointmentResponse createAppointment(UUID patientId, UUID doctorId, AppointmentRequest request) {
@@ -52,19 +53,19 @@ public class AppointmentService {
 
         // Prevent overlap with existing active appointments of the same doctor
         if (appointmentRepository.existsDoctorTimeConflict(
-            doctorId,
-            request.getAppointmentDate(),
-            request.getStartTime(),
-            requestedEndTime)) {
+                doctorId,
+                request.getAppointmentDate(),
+                request.getStartTime(),
+                requestedEndTime)) {
             throw new AppException(ErrorCode.APPOINTMENT_CONFLICT);
         }
 
         // Prevent overlap with patient's own active appointments
         if (appointmentRepository.existsPatientTimeConflict(
-            patientId,
-            request.getAppointmentDate(),
-            request.getStartTime(),
-            requestedEndTime)) {
+                patientId,
+                request.getAppointmentDate(),
+                request.getStartTime(),
+                requestedEndTime)) {
             throw new AppException(ErrorCode.APPOINTMENT_CONFLICT);
         }
 
@@ -75,7 +76,8 @@ public class AppointmentService {
                 .orElseThrow(() -> new AppException(ErrorCode.SCHEDULE_NOT_EXISTED));
 
         // Ensure requested time is inside the doctor's working schedule
-        if (request.getStartTime().isBefore(schedule.getStartTime()) || requestedEndTime.isAfter(schedule.getEndTime())) {
+        if (request.getStartTime().isBefore(schedule.getStartTime())
+                || requestedEndTime.isAfter(schedule.getEndTime())) {
             throw new AppException(ErrorCode.APPOINTMENT_CONFLICT);
         }
 
@@ -88,12 +90,16 @@ public class AppointmentService {
         Appointment appointment = appointmentMapper.toAppointment(request);
         appointment.setEndTime(requestedEndTime);
         appointment.setStatus("PENDING");
+        appointment.setPaymentStatus("UNPAID");
         appointment.setPatient(patient);
         appointment.setDoctor(doctor);
         appointment.setSchedule(schedule);
         appointment.setQueueNumber(bookedCount + 1);
 
         appointment = appointmentRepository.save(appointment);
+
+        // Gửi email xác nhận đặt lịch (async)
+        emailService.sendBookingConfirmation(appointment);
 
         return appointmentMapper.toAppointmentResponse(appointment);
     }
@@ -122,6 +128,13 @@ public class AppointmentService {
         appointment.setStatus(status);
         appointment = appointmentRepository.save(appointment);
 
+        // Gửi email khi xác nhận lịch (CONFIRMED) hoặc hủy lịch (CANCELLED)
+        if ("CANCELLED".equalsIgnoreCase(status)) {
+            emailService.sendCancellationNotification(appointment);
+        } else if ("CONFIRMED".equalsIgnoreCase(status)) {
+            emailService.sendBookingConfirmation(appointment);
+        }
+
         return appointmentMapper.toAppointmentResponse(appointment);
     }
 
@@ -131,7 +144,10 @@ public class AppointmentService {
                 .orElseThrow(() -> new AppException(ErrorCode.APPOINTMENT_NOT_EXISTED));
 
         appointment.setStatus("CANCELLED");
-        appointmentRepository.save(appointment);
+        appointment = appointmentRepository.save(appointment);
+
+        // Gửi email thông báo hủy lịch (async)
+        emailService.sendCancellationNotification(appointment);
     }
 
     private PageResponse<AppointmentResponse> buildPageResponse(Page<AppointmentResponse> page) {
@@ -145,9 +161,6 @@ public class AppointmentService {
                 .last(page.isLast())
                 .build();
     }
-
-
-    // Thêm vào AppointmentService.java
 
     public List<Appointment> getPatientAppointmentsList(UUID patientId) {
         return appointmentRepository.findByPatientId(patientId);
@@ -164,5 +177,11 @@ public class AppointmentService {
 
     public List<Appointment> getUpcomingAppointmentsByPatient(UUID patientId) {
         return appointmentRepository.findUpcomingAppointmentsByPatient(patientId);
+    }
+
+    /** Admin: lấy toàn bộ lịch hẹn trong 1 query */
+    public PageResponse<AppointmentResponse> getAllAppointments(Pageable pageable) {
+        Page<Appointment> page = appointmentRepository.findAll(pageable);
+        return buildPageResponse(page.map(appointmentMapper::toAppointmentResponse));
     }
 }

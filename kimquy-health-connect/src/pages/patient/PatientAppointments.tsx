@@ -40,7 +40,7 @@ const PatientAppointments = () => {
       <div className={styles.tableCard}>
         <table className={styles.table}>
           <thead>
-            <tr><th>Bác sĩ</th><th>Chuyên khoa</th><th>Loại</th><th>Ngày</th><th>STT</th><th>Trạng thái</th><th></th></tr>
+            <tr><th>Bác sĩ</th><th>Chuyên khoa</th><th>Loại</th><th>Ngày</th><th>STT</th><th>Trạng thái</th><th>Thanh toán</th><th></th></tr>
           </thead>
           <tbody>
             {filtered.map((a) => (
@@ -55,6 +55,7 @@ const PatientAppointments = () => {
                 <td>{a.appointmentDate}<br /><small>{a.startTime}</small></td>
                 <td><strong style={{ color: 'var(--color-primary)' }}>{a.queueNumber ?? '—'}</strong></td>
                 <td><span className={`status-badge status-badge--${a.status.toLowerCase()}`}>{filterLabels[a.status as Filter] || a.status}</span></td>
+                <td>{a.paymentStatus === 'PAID' ? <span className="paid-badge">Đã thanh toán</span> : <span className="unpaid-badge">Chưa thanh toán</span>}</td>
                 <td>
                   <Link to={`/patient/appointments/${a.id}`}><button className={`${styles.btnAction} ${styles.btnView}`}>Chi tiết</button></Link>
                   {(a.status === 'PENDING' || a.status === 'CONFIRMED') && (

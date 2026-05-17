@@ -41,7 +41,7 @@ public enum ErrorCode {
     PHONE_INVALID(5002, "Invalid phone number", HttpStatus.BAD_REQUEST),
     APPOINTMENT_CONFLICT(5003, "Appointment time conflict", HttpStatus.BAD_REQUEST),
     SCHEDULE_FULL(5004, "Schedule is full", HttpStatus.BAD_REQUEST),
-
+    INVALID_REQUEST(5005, "Invalid request", HttpStatus.BAD_REQUEST),
     // Database errors
     DATA_INTEGRITY_VIOLATION(6001, "Data integrity violation", HttpStatus.BAD_REQUEST);
 

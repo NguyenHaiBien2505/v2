@@ -46,4 +46,19 @@ public class PaymentController {
             return ResponseEntity.badRequest().body("failed: " + e.getMessage());
         }
     }
+
+    // Quick verify endpoint for frontend to poll after redirect
+    @GetMapping("/verify")
+    public ResponseEntity<PaymentResponseDTO> verifyPayment(
+            @RequestParam(required = false) Long orderCode,
+            @RequestParam(required = false) Long appointmentId) {
+        try {
+            PaymentResponseDTO dto = paymentService.verifyPayment(orderCode, appointmentId);
+            if (dto == null) return ResponseEntity.notFound().build();
+            return ResponseEntity.ok(dto);
+        } catch (Exception e) {
+            log.error("Verify payment error", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

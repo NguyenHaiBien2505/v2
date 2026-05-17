@@ -19,6 +19,7 @@ import nhb.vn.be.repository.AppointmentRepository;
 import nhb.vn.be.repository.DoctorRepository;
 import nhb.vn.be.repository.ScheduleRepository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -35,8 +36,16 @@ public class ScheduleService {
         Doctor doctor = doctorRepository.findById(doctorId)
                 .orElseThrow(() -> new AppException(ErrorCode.DOCTOR_NOT_EXISTED));
 
-        Schedule schedule = scheduleMapper.toSchedule(request);
-        schedule.setDoctor(doctor);
+        List<Schedule> existingSchedules = scheduleRepository.findByDoctorIdAndWorkDate(doctorId, request.getWorkDate());
+        Schedule schedule;
+        if (!existingSchedules.isEmpty()) {
+            schedule = existingSchedules.get(0);
+            scheduleMapper.updateSchedule(schedule, request);
+        } else {
+            schedule = scheduleMapper.toSchedule(request);
+            schedule.setDoctor(doctor);
+        }
+        
         schedule.setStatus(request.getStatus() != null ? request.getStatus() : "ACTIVE");
 
         schedule = scheduleRepository.save(schedule);

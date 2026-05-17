@@ -118,6 +118,17 @@ public class UserService {
         return userMapper.toUserResponse(user);
     }
 
+    public void updateMyAvatar(String avatarUrl) {
+        var context = SecurityContextHolder.getContext();
+        String username = context.getAuthentication().getName();
+
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXISTED));
+
+        user.setAvatarUrl(avatarUrl);
+        userRepository.save(user);
+    }
+
     private PageResponse<UserResponse> buildPageResponse(Page<UserResponse> page) {
         return PageResponse.<UserResponse>builder()
                 .content(page.getContent())

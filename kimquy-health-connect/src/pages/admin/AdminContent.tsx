@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { adminSidebar } from './adminSidebar';
 import { type BlogPost } from '../../data/mockData';
 import { createAdminNews, deleteAdminNews, getAdminNews, updateAdminNews } from '../../services/healthApi';
@@ -12,46 +13,76 @@ const AdminContent = () => {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<BlogPost | null>(null);
   const [form, setForm] = useState<Partial<BlogPost>>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const filtered = list.filter(p => p.title.toLowerCase().includes(search.toLowerCase()));
 
   const openAdd = () => { setEditing(null); setForm({ category: 'Sức khỏe', tags: [], authorName: 'Admin' }); setShowModal(true); };
   const openEdit = (p: BlogPost) => { setEditing(p); setForm(p); setShowModal(true); };
-  const remove = async (id: number) => {
-    if (!confirm('Xóa bài viết này?')) return;
-    await deleteAdminNews(id);
-    setList(list.filter(p => p.id !== id));
+  
+  const openDeleteConfirm = (id: number) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
   };
-  const save = async () => {
-    if (!form.title) return;
 
-    if (editing) {
-      const updated = await updateAdminNews(editing.id, {
-        title: form.title,
-        excerpt: form.excerpt,
-        content: form.content ?? '',
-        thumbnailUrl: form.thumbnailUrl,
-        category: form.category,
-        authorName: form.authorName,
-        publishedAt: form.publishedAt,
-        featured: true,
-      });
-      setList(list.map((p) => (p.id === editing.id ? updated : p)));
-    } else {
-      const created = await createAdminNews({
-        title: form.title,
-        excerpt: form.excerpt,
-        content: form.content ?? '',
-        thumbnailUrl: form.thumbnailUrl,
-        category: form.category,
-        authorName: form.authorName,
-        publishedAt: form.publishedAt,
-        featured: true,
-      });
-      setList([created, ...list]);
+  const confirmDelete = async () => {
+    if (deleteTargetId === null) return;
+    setIsLoading(true);
+    try {
+      await deleteAdminNews(deleteTargetId);
+      setList(list.filter(p => p.id !== deleteTargetId));
+    } catch (error) {
+      console.error('Lỗi khi xóa bài viết:', error);
+      alert('Không thể xóa bài viết. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
+    }
+  };
+
+  const save = async () => {
+    if (!form.title?.trim()) {
+      alert('Tiêu đề bài viết không được để trống');
+      return;
     }
 
-    setShowModal(false);
+    setIsLoading(true);
+    try {
+      if (editing) {
+        const updated = await updateAdminNews(editing.id, {
+          title: form.title,
+          excerpt: form.excerpt,
+          content: form.content ?? '',
+          thumbnailUrl: form.thumbnailUrl,
+          category: form.category,
+          authorName: form.authorName,
+          featured: true,
+        });
+        setList(list.map((p) => (p.id === editing.id ? updated : p)));
+      } else {
+        const created = await createAdminNews({
+          title: form.title,
+          excerpt: form.excerpt,
+          content: form.content ?? '',
+          thumbnailUrl: form.thumbnailUrl,
+          category: form.category,
+          authorName: form.authorName,
+          featured: true,
+        });
+        setList([created, ...list]);
+      }
+      setShowModal(false);
+      setForm({});
+      setEditing(null);
+    } catch (error) {
+      console.error('Lỗi khi lưu bài viết:', error);
+      alert('Không thể lưu bài viết. Vui lòng thử lại.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -86,7 +117,7 @@ const AdminContent = () => {
                   <td>
                     <div className={styles.actions}>
                       <button className={styles.btnIcon} onClick={() => openEdit(p)}><FiEdit2 /></button>
-                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => remove(p.id)}><FiTrash2 /></button>
+                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => openDeleteConfirm(p.id)}><FiTrash2 /></button>
                     </div>
                   </td>
                 </tr>
@@ -129,11 +160,27 @@ const AdminContent = () => {
             </div>
             <div className={styles.modalFooter}>
               <button className={styles.btnSecondary} onClick={() => setShowModal(false)}>Hủy</button>
-              <button className={styles.btnPrimary} onClick={save}>{editing ? 'Cập nhật' : 'Đăng bài'}</button>
+              <button className={styles.btnPrimary} onClick={save} disabled={isLoading}>
+                {isLoading ? 'Đang lưu...' : (editing ? 'Cập nhật' : 'Đăng bài')}
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Xóa bài viết"
+        message="Bạn có chắc chắn muốn xóa bài viết này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDangerous={true}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+      />
     </DashboardLayout>
   );
 };

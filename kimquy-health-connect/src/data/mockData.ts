@@ -55,6 +55,7 @@ export interface Appointment {
   id: number;
   patientId: number | string;
   patientCode?: string;
+  patientName?: string;
   doctorId: number | string;
   doctorName: string;
   doctorAvatar: string;
@@ -68,6 +69,7 @@ export interface Appointment {
   notes?: string;
   queueNumber?: number;
   appointmentType: AppointmentType;
+  paymentStatus?: 'PAID' | 'UNPAID';
 }
 
 export interface Review {

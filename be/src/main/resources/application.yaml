@@ -2,6 +2,9 @@ server:
   port: 8080
   servlet:
     context-path: /api/v2
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 spring:
   application:
@@ -11,6 +14,8 @@ spring:
     driverClassName: "com.mysql.cj.jdbc.Driver"
     username: ${USERNAME}
     password: ${PASSWORD}
+    # username: root
+    # password: root
     hikari:
       connection-timeout: 30000
       maximum-pool-size: 10
@@ -25,6 +30,7 @@ spring:
   ai:
     openai:
       api-key: ${GEMINI_KEY}
+      # api-key: AIzaSyCgGQypZP0Orym3C6lwvKfhXSldNmzaT4k
       chat:
         base-url: https://generativelanguage.googleapis.com
         completions-path: /v1beta/openai/chat/completions/
@@ -37,6 +43,21 @@ spring:
         repository:
           jdbc:
             initialize-schema: always
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME}
+    password: ${GMAIL_APP_PASSWORD}
+    # username: biendz2004@gmail.com
+    # password: kqreexennjmgwvky
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
 
 app:
   cors:

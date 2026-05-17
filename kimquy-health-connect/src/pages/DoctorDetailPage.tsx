@@ -33,7 +33,7 @@ const DoctorDetailPage = () => {
               <span className={styles.metaItem} title="Số chứng chỉ hành nghề"><FaIdBadge /> CCHN: {doctor.licenseNumber}</span>
             </div>
             <p className={styles.bio}>{doctor.bio}</p>
-            <button className={styles.btnBook} onClick={() => navigate('/patient/booking')}>
+            <button className={styles.btnBook} onClick={() => navigate(`/patient/booking?doctorId=${doctor.id}`)}>
               <FaClock style={{ marginRight: 6, verticalAlign: 'middle' }} /> Đặt lịch với bác sĩ này
             </button>
           </div>

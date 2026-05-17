@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FiSearch, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiEdit2, FiTrash2, FiUpload } from 'react-icons/fi';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { adminSidebar } from './adminSidebar';
-import { createAdminUser, deleteAdminUser, getAdminUsers, updateAdminUser, type AdminUserRow } from '../../services/healthApi';
+import { createAdminUser, deleteAdminUser, getAdminUsers, updateAdminUser, uploadAvatar, type AdminUserRow } from '../../services/healthApi';
 import styles from './Admin.module.css';
 
 interface UserForm {
   username: string;
+  email: string;
   password: string;
   avatarUrl: string;
   role: 'PATIENT' | 'DOCTOR' | 'ADMIN';
@@ -34,11 +36,13 @@ const AdminUsers = () => {
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<AdminUserRow | null>(null);
-  const [form, setForm] = useState<UserForm>({ username: '', password: '', avatarUrl: '', role: 'PATIENT', status: 'ACTIVE' });
+  const [form, setForm] = useState<UserForm>({ username: '', email: '', password: '', avatarUrl: '', role: 'PATIENT', status: 'ACTIVE' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -65,7 +69,7 @@ const AdminUsers = () => {
   const openAdd = () => {
     setEditing(null);
     setActionError('');
-    setForm({ username: '', password: '', avatarUrl: '', role: 'PATIENT', status: 'ACTIVE' });
+    setForm({ username: '', email: '', password: '', avatarUrl: '', role: 'PATIENT', status: 'ACTIVE' });
     setShowModal(true);
   };
 
@@ -74,6 +78,7 @@ const AdminUsers = () => {
     setActionError('');
     setForm({
       username: u.username,
+      email: u.email ?? '',
       password: '',
       avatarUrl: u.avatarUrl ?? '',
       role: roleFromRow(u),
@@ -82,14 +87,37 @@ const AdminUsers = () => {
     setShowModal(true);
   };
 
-  const remove = async (id: string) => {
-    if (!confirm('Xóa tài khoản này?')) return;
+  const openDeleteConfirm = (id: string) => {
+    setDeleteTargetId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const remove = async () => {
+    if (!deleteTargetId) return;
     try {
       setActionError('');
-      await deleteAdminUser(id);
+      await deleteAdminUser(deleteTargetId);
       await refresh();
     } catch {
       setActionError('Xóa tài khoản thất bại.');
+    } finally {
+      setShowDeleteConfirm(false);
+      setDeleteTargetId(null);
+    }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setSaving(true);
+      const url = await uploadAvatar(file);
+      setForm({ ...form, avatarUrl: url });
+    } catch (err) {
+      setActionError('Không thể upload ảnh. Vui lòng thử lại.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -102,6 +130,7 @@ const AdminUsers = () => {
       setActionError('');
       if (editing) {
         await updateAdminUser(editing.id, {
+          email: form.email || undefined,
           password: form.password.trim() ? form.password : undefined,
           avatarUrl: form.avatarUrl || undefined,
           status: form.status,
@@ -110,6 +139,7 @@ const AdminUsers = () => {
       } else {
         await createAdminUser({
           username: form.username,
+          email: form.email || undefined,
           password: form.password,
           avatarUrl: form.avatarUrl || undefined,
           roles: [roleIdByName[form.role]],
@@ -159,14 +189,14 @@ const AdminUsers = () => {
       <div className={styles.tableCard}>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
-            <thead><tr><th>ID</th><th>Username</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+            <thead><tr><th>STT</th><th>Username</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
             <tbody>
               {loading && (
                 <tr><td colSpan={6}>Đang tải dữ liệu...</td></tr>
               )}
-              {!loading && filtered.map(u => (
+              {!loading && filtered.map((u, idx) => (
                 <tr key={u.id}>
-                  <td>#{u.id}</td>
+                  <td>{idx + 1}</td>
                   <td>
                     <div className={styles.avatarCell}>
                       {u.avatarUrl ? <img src={u.avatarUrl} alt={u.username} className={styles.avatar} /> : <div className={styles.avatar} style={{ display: 'grid', placeItems: 'center', background: 'var(--color-bg)' }}>{u.username.charAt(0).toUpperCase()}</div>}
@@ -179,7 +209,7 @@ const AdminUsers = () => {
                   <td>
                     <div className={styles.actions}>
                       <button className={styles.btnIcon} onClick={() => openEdit(u)}><FiEdit2 /></button>
-                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => remove(u.id)}><FiTrash2 /></button>
+                      <button className={`${styles.btnIcon} ${styles.danger}`} onClick={() => openDeleteConfirm(u.id)}><FiTrash2 /></button>
                     </div>
                   </td>
                 </tr>
@@ -200,6 +230,10 @@ const AdminUsers = () => {
               <div className={styles.formGroup}>
                 <label>Username *</label>
                 <input value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} disabled={!!editing} />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Email</label>
+                <input type="email" placeholder="example@email.com" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
               </div>
               <div className={styles.formGroup}>
                 <label>{editing ? 'Mật khẩu mới' : 'Mật khẩu *'}</label>
@@ -223,8 +257,26 @@ const AdminUsers = () => {
                 </div>
               </div>
               <div className={styles.formGroup}>
-                <label>Avatar URL</label>
-                <input value={form.avatarUrl} onChange={e => setForm({ ...form, avatarUrl: e.target.value })} />
+                <label>Ảnh đại diện</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className={styles.avatarPreview} style={{ width: 60, height: 60, borderRadius: '50%', overflow: 'hidden', background: '#f0f0f0', display: 'grid', placeItems: 'center' }}>
+                    {form.avatarUrl ? (
+                      <img src={form.avatarUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ fontSize: 24, color: '#999' }}>?</span>
+                    )}
+                  </div>
+                  <label className={styles.btnSecondary} style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <FiUpload /> {saving ? 'Đang tải...' : 'Chọn ảnh từ máy'}
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} style={{ display: 'none' }} disabled={saving} />
+                  </label>
+                </div>
+                <input 
+                  style={{ marginTop: 8, fontSize: '12px', opacity: 0.7 }}
+                  value={form.avatarUrl} 
+                  onChange={e => setForm({ ...form, avatarUrl: e.target.value })} 
+                  placeholder="Hoặc dán URL ảnh vào đây"
+                />
               </div>
             </div>
             <div className={styles.modalFooter}>
@@ -234,6 +286,20 @@ const AdminUsers = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Xóa tài khoản"
+        message="Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        isDangerous={true}
+        onConfirm={remove}
+        onCancel={() => {
+          setShowDeleteConfirm(false);
+          setDeleteTargetId(null);
+        }}
+      />
     </DashboardLayout>
   );
 };
